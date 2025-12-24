@@ -4,6 +4,90 @@
 
 ---
 
+## 0. GitHub Copilot Chat Integration (PRIMARY API)
+
+**Why Copilot Chat > API Keys**:
+- ✅ FREE tier available (GitHub Copilot Individual - $10/mo includes chat)
+- ✅ No per-request costs like OpenAI/Anthropic
+- ✅ Same models as VS Code (GPT-4, Claude 3.5 Sonnet)
+- ✅ OAuth authentication (no manual API key management)
+
+**Implementation**:
+
+### 0.1 Authentication Flow
+```pascal
+// Pythia.GitHub.Auth.pas (NEW)
+class function TGitHubCopilotAuth.GetAuthToken: string;
+begin
+  // 1. Device flow: Request code from GitHub
+  //    POST https://github.com/login/device/code
+  //    client_id=Iv1.b507a08c87ecfe98 (GitHub Copilot's client ID)
+  
+  // 2. Show user code in dialog: "Enter code ABCD-1234 at github.com/login/device"
+  
+  // 3. Poll for token:
+  //    POST https://github.com/login/oauth/access_token
+  //    Returns: { "access_token": "gho_..." }
+  
+  // 4. Cache token in registry (encrypted)
+  Result := GetCachedToken;
+end;
+```
+
+### 0.2 Chat API Endpoint
+```pascal
+// Pythia.AI.Client.pas - Add GitHub Copilot method
+class function TPythiaAIClient.CallGitHubCopilot(
+  const AMessages: TArray<TChatMessage>
+): string;
+begin
+  // Endpoint: https://api.githubcopilot.com/chat/completions
+  // OR: https://api.github.com/copilot_internal/v2/chat/completions
+  
+  // Headers:
+  //   Authorization: Bearer {github_token}
+  //   Editor-Version: Delphi-12.0
+  //   Editor-Plugin-Version: Pythia-1.0
+  
+  // Body (OpenAI-compatible):
+  {
+    "model": "gpt-4",  // or "claude-3.5-sonnet"
+    "messages": [
+      {"role": "system", "content": "You are Pythia..."},
+      {"role": "user", "content": "{user_message}"}
+    ],
+    "stream": false
+  }
+end;
+```
+
+### 0.3 Model Selection
+Update ComboBox in ChatForm:
+```pascal
+- GitHub Copilot: GPT-4  (FREE with subscription) ← DEFAULT
+- GitHub Copilot: Claude 3.5 Sonnet
+---
+- OpenAI: GPT-4 (requires API key)
+- Anthropic: Claude 3.5 (requires API key)
+```
+
+### 0.4 Settings UI Changes
+```pascal
+// Pythia.SettingsForm - Add GitHub section
+[GitHub Copilot]
+☑ Use GitHub Copilot (recommended)
+   Status: ✓ Authenticated as tmx@kinecis.com
+   [Sign Out] [Reconnect]
+
+[API Keys] (optional - for direct API access)
+   OpenAI Key: [......]
+   Anthropic Key: [......]
+```
+
+**Fallback**: If GitHub auth fails, fall back to API keys.
+
+---
+
 ## 1. Core Concept: How Copilot Works
 
 **Key Components**:
@@ -125,7 +209,43 @@ IOTAProject.GetModuleFileCount        // Project files
   function GetProjectStructure: TProjectTree;       // File tree
   function GetCursorContext: TCursorInfo;           // Surrounding code at cursor
   ```
-**New Units** (5 total):
+**New Units** (6 total):
+1. **Pythia.GitHub.Auth.pas** - GitHub OAuth device flow
+2. Pythia.IDE.Wrapper.pas
+3. Pythia.Diff.Engine.pas
+4. Pythia.Agent.Parser.pas
+5. Pythia.Context.Gatherer.pas
+6. Pythia.Agent.Executor.pas
+
+### Example Flow: "Refactor Method"
+
+**User Request**: `"Extract this code into a separate method"`
+
+**Flow**:
+1. Pythia.ChatForm.SendMessageToAI
+   - Checks: GitHub Copilot authenticated?
+   - If yes → CallGitHubCopilot()
+   - If no → Prompt for GitHub login OR use API key
+
+2. Pythia.Context.Gatherer:
+   - Reads current file via IOTAEditBuffer
+   - Gets cursor position, selected text
+   - Builds prompt: "Current file: Unit1.pas\nSelected code: {...}\nUser: Extract method"
+
+3. GitHub Copilot API responds with diff:
+   ```pascal:Unit1.pas
+   <<<<<<< ORIGINAL
+   [old code]
+   =======
+   [refactored code]
+   >>>>>>> MODIFIED
+   ```
+
+4. Pythia.Agent.Parser extracts operations
+5. Pythia.Agent.Executor:
+   - Confirms with user: "Apply refactoring to MyUnit.pas?"
+   - Calls Pythia.IDE.Wrapper.ApplyDiff()
+   
 6. Pythia.Agent.Executor:
    - Confirms with user: "Apply refactoring to MyUnit.pas?"
    - Calls Pythia.IDE.Wrapper.ApplyDiff()
@@ -302,11 +422,25 @@ INSTRUCTIONS:
 
 ## 7. Implementation Phases
 
-### Phase 1: Read-Only Context (2-3 weeks)
+### Phase 1: GitHub Copilot Integration (1 week) **PRIORITY**
+**Goal**: Replace API keys with GitHub Copilot authentication
+
+**Deliverables**:
+1. `Pythia.GitHub.Auth.pas` with OAuth device flow
+2. Update `Pythia.AI.Client.pas` to call GitHub Copilot API
+3. Settings form: "Sign in with GitHub" button
+4. Model dropdown: "GitHub Copilot: GPT-4" as default
+5. Token caching in encrypted registry storage
+
+**Test**: Send chat message using free GitHub Copilot tier
+
+---
+
+### Phase 2: Read-Only Context (2-3 weeks)
 **Goal**: AI can see code, give advice, but not edit yet
 
 **Deliverables**:
-1. `Pythia.IDE.Wrapper.pas` wit (FREE AI)
+1. `Pythia.IDE.Wrapper.pas` with read-only methods: (FREE AI)
 
 **Add as 3rd API provider** alongside OpenAI/Anthropic:
 
@@ -401,17 +535,31 @@ Cursor: Line 45
 FILE CONTENT (lines 40-50):
 [code snippet]
 
-USER: {user message}**Next 2 Weeks**:
-   - [ ] Implement file reading (Phase 1)
+USER: {user message}
+```
+
+---
+
+## 13. Implementation Roadmap
+
+### Phase 0: GitHub Copilot Integration (Week 1) ✨ **START HERE**
+- [ ] Create Pythia.GitHub.Auth.pas with OAuth device flow
+- [ ] Update Pythia.AI.Client.pas to call Copilot Chat API
+- [ ] Add "Sign in with GitHub" to settings form
+- [ ] Test: Chat works without API keys
+- **Checkpoint**: `git tag checkpoint-github-copilot`
+
+### Phase 1-2: Context (Weeks 2-4)
+   - [ ] Implement file reading (Pythia.IDE.Wrapper)
    - [ ] Inject current file content into AI prompts
    - [ ] Test: "Explain this code" with context
 
-3. **Month 1 Goal**:
-   - [ ] Complete Phase 1-2: AI can see code + GitHub Models working
+### Month 1 Goal:
+   - [ ] Complete Phase 0-2: GitHub Copilot working + AI can see code
    - [ ] User can ask questions with full file context
 
-4. **Month 2-3 Goal**:
-   - [ ] Phase 3: AI can edit files
+### Month 2-3 Goal:
+   - [ ] Phase 3: AI can edit files (Diff.Engine, Agent.Parser, Agent.Executor)
    - [ ] "Add logging", "Refactor method" work end-to-end
 
 ---

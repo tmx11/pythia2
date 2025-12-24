@@ -24,6 +24,15 @@ object ChatWindow: TChatWindow
     ExplicitTop = 444
     ExplicitWidth = 600
   end
+  object SplitterContext: TSplitter
+    Left = 0
+    Top = 98
+    Width = 584
+    Height = 4
+    Cursor = crVSplit
+    Align = alTop
+    ExplicitTop = 91
+  end
   object PanelTop: TPanel
     Left = 0
     Top = 0

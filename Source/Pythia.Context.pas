@@ -274,7 +274,7 @@ end;
 
 function TBaseContextProvider.GetRelatedFiles(const FileName: string): TArray<string>;
 var
-  BaseName, IntfFile, ImplFile: string;
+  BaseName, ImplFile: string;
 begin
   // Find interface/implementation pairs
   SetLength(Result, 0);

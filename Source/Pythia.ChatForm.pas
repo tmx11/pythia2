@@ -30,6 +30,7 @@ type
     ButtonTestConnection: TButton;
     StatusBar: TStatusBar;
     SplitterInput: TSplitter;
+    SplitterContext: TSplitter;
     PanelContext: TPanel;
     CheckAutoContext: TCheckBox;
     LabelContext: TLabel;
@@ -474,7 +475,10 @@ var
   StatusText: string;
 begin
   if not Assigned(FContextProvider) then
+  begin
+    LabelContext.Caption := 'Context: Provider not initialized';
     Exit;
+  end;
     
   try
     Context := (FContextProvider as TBaseContextProvider).GatherContext(False); // Don't include full project list for display
@@ -497,6 +501,16 @@ begin
     
     // Update detailed context info
     MemoContextInfo.Lines.Clear;
+    
+    // Always show provider type first
+    if FContextProvider is TIDEContextProvider then
+      MemoContextInfo.Lines.Add('Provider: IDE Context (ToolsAPI)')
+    else if FContextProvider is TStandaloneContextProvider then
+      MemoContextInfo.Lines.Add('Provider: Standalone (No IDE detected)')
+    else
+      MemoContextInfo.Lines.Add('Provider: ' + TObject(FContextProvider).ClassName);
+    MemoContextInfo.Lines.Add('');
+    
     if Length(Context) > 0 then
     begin
       MemoContextInfo.Lines.Add('Available Context:');
@@ -515,11 +529,17 @@ begin
     else
     begin
       MemoContextInfo.Lines.Add('No context available');
-      MemoContextInfo.Lines.Add('Open a file in the IDE to enable context');
+      MemoContextInfo.Lines.Add('');
+      MemoContextInfo.Lines.Add('IsAvailable: ' + BoolToStr(FContextProvider.IsAvailable, True));
     end;
   except
     on E: Exception do
+    begin
       LabelContext.Caption := 'Context: Error - ' + E.Message;
+      MemoContextInfo.Lines.Clear;
+      MemoContextInfo.Lines.Add('Error gathering context:');
+      MemoContextInfo.Lines.Add(E.ClassName + ': ' + E.Message);
+    end;
   end;
 end;
 

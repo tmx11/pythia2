@@ -19,9 +19,75 @@ object SettingsForm: TSettingsForm
     Top = 0
     Width = 720
     Height = 469
-    ActivePage = TabAPI
+    ActivePage = TabGitHub
     Align = alClient
     TabOrder = 0
+    object TabGitHub: TTabSheet
+      Caption = 'GitHub Copilot'
+      object LabelGitHub: TLabel
+        Left = 16
+        Top = 24
+        Width = 130
+        Height = 20
+        Caption = 'GitHub Copilot'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -15
+        Font.Name = 'Segoe UI'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object LabelGitHubStatus: TLabel
+        Left = 16
+        Top = 56
+        Width = 168
+        Height = 15
+        Caption = 'Status: Not authenticated'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clGray
+        Font.Height = -12
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
+      end
+      object LabelGitHubInfo: TLabel
+        Left = 16
+        Top = 180
+        Width = 655
+        Height = 60
+        Caption = 
+          'GitHub Copilot provides FREE AI assistance using your existing G' +
+          'itHub subscription.'#13#10'Click "Sign in with GitHub" and follow the' +
+          ' instructions in your browser.'#13#10'This is the same authentication' +
+          ' used by VS Code Copilot.'#13#10'No API keys required!'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clGray
+        Font.Height = -12
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
+        WordWrap = True
+      end
+      object ButtonGitHubSignIn: TButton
+        Left = 16
+        Top = 88
+        Width = 185
+        Height = 33
+        Caption = 'Sign in with GitHub'
+        TabOrder = 0
+        OnClick = ButtonGitHubSignInClick
+      end
+      object ButtonGitHubSignOut: TButton
+        Left = 208
+        Top = 88
+        Width = 145
+        Height = 33
+        Caption = 'Sign out'
+        Enabled = False
+        TabOrder = 1
+        OnClick = ButtonGitHubSignOutClick
+      end
+    end
     object TabAPI: TTabSheet
       Caption = 'API Keys'
       object LabelOpenAI: TLabel

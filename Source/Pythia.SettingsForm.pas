@@ -11,6 +11,12 @@ uses
 type
   TSettingsForm = class(TForm)
     PageControl: TPageControl;
+    TabGitHub: TTabSheet;
+    LabelGitHub: TLabel;
+    LabelGitHubStatus: TLabel;
+    LabelGitHubInfo: TLabel;
+    ButtonGitHubSignIn: TButton;
+    ButtonGitHubSignOut: TButton;
     TabAPI: TTabSheet;
     LabelOpenAI: TLabel;
     LabelAnthropic: TLabel;
@@ -25,9 +31,12 @@ type
     procedure ButtonOKClick(Sender: TObject);
     procedure ButtonCancelClick(Sender: TObject);
     procedure LabelConfigPathClick(Sender: TObject);
+    procedure ButtonGitHubSignInClick(Sender: TObject);
+    procedure ButtonGitHubSignOutClick(Sender: TObject);
   private
     procedure LoadSettings;
     procedure SaveSettings;
+    procedure UpdateGitHubStatus;
   public
     class function Execute: Boolean;
   end;
@@ -35,7 +44,7 @@ type
 implementation
 
 uses
-  Pythia.Config;
+  Pythia.Config, Pythia.GitHub.Auth;
 
 {$R *.dfm}
 
@@ -70,6 +79,7 @@ begin
   LabelConfigPath.Hint := 'Click to open config file';
   LabelConfigPath.ShowHint := True;
   
+  UpdateGitHubStatus;
   LoadSettings;
 end;
 
@@ -109,6 +119,74 @@ begin
     ShellExecute(0, 'open', PChar(ConfigPath), nil, nil, SW_SHOW)
   else
     ShowMessage('Config file not found: ' + ConfigPath);
+end;
+
+procedure TSettingsForm.UpdateGitHubStatus;
+var
+  Token: string;
+begin
+  Token := TGitHubCopilotAuth.GetAuthToken;
+  
+  if Token <> '' then
+  begin
+    LabelGitHubStatus.Caption := 'Status: ✓ Authenticated';
+    LabelGitHubStatus.Font.Color := clGreen;
+    LabelGitHubStatus.Font.Style := [fsBold];
+    ButtonGitHubSignIn.Enabled := False;
+    ButtonGitHubSignOut.Enabled := True;
+  end
+  else
+  begin
+    LabelGitHubStatus.Caption := 'Status: Not authenticated';
+    LabelGitHubStatus.Font.Color := clGray;
+    LabelGitHubStatus.Font.Style := [];
+    ButtonGitHubSignIn.Enabled := True;
+    ButtonGitHubSignOut.Enabled := False;
+  end;
+end;
+
+procedure TSettingsForm.ButtonGitHubSignInClick(Sender: TObject);
+var
+  DeviceCode, UserCode, VerificationUri: string;
+  AuthResult: TGitHubAuthResult;
+begin
+  try
+    // Start OAuth device flow
+    if not TGitHubCopilotAuth.StartDeviceFlow(DeviceCode, UserCode, VerificationUri) then
+    begin
+      ShowMessage('Failed to start GitHub authentication. Please check your internet connection.');
+      Exit;
+    end;
+    
+    // Show user code and open browser
+    ShowMessage(Format('Please visit: %s'#13#10#13#10'And enter code: %s'#13#10#13#10 +
+      'Click OK after authorizing in your browser.', [VerificationUri, UserCode]));
+    
+    // Open browser
+    ShellExecute(0, 'open', PChar(VerificationUri), nil, nil, SW_SHOW);
+    
+    // Poll for token
+    AuthResult := TGitHubCopilotAuth.PollForToken(DeviceCode);
+    
+    if AuthResult.Success then
+    begin
+      ShowMessage('Successfully authenticated with GitHub!');
+      UpdateGitHubStatus;
+    end
+    else
+      ShowMessage('Authentication failed: ' + AuthResult.ErrorMessage);
+      
+  except
+    on E: Exception do
+      ShowMessage('Error during GitHub sign-in: ' + E.Message);
+  end;
+end;
+
+procedure TSettingsForm.ButtonGitHubSignOutClick(Sender: TObject);
+begin
+  TGitHubCopilotAuth.ClearAuth;
+  UpdateGitHubStatus;
+  ShowMessage('Signed out from GitHub');
 end;
 
 end.

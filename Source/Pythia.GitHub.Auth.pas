@@ -23,7 +23,7 @@ type
     class var FStatus: TGitHubAuthStatus;
   public
     // GitHub OAuth Device Flow - matches VS Code Copilot
-    class function StartDeviceFlow(out UserCode: string; out VerificationUri: string): Boolean;
+    class function StartDeviceFlow(out DeviceCode: string; out UserCode: string; out VerificationUri: string): Boolean;
     class function PollForToken(const DeviceCode: string): TGitHubAuthResult;
     class function GetAuthToken: string;
     class function GetUsername: string;
@@ -48,7 +48,7 @@ uses
 
 { TGitHubCopilotAuth }
 
-class function TGitHubCopilotAuth.StartDeviceFlow(out UserCode, VerificationUri: string): Boolean;
+class function TGitHubCopilotAuth.StartDeviceFlow(out DeviceCode, UserCode, VerificationUri: string): Boolean;
 var
   HttpClient: THTTPClient;
   Response: IHTTPResponse;
@@ -74,9 +74,9 @@ begin
         try
           if Assigned(ResponseJSON) then
           begin
+            DeviceCode := ResponseJSON.GetValue<string>('device_code');
             UserCode := ResponseJSON.GetValue<string>('user_code');
             VerificationUri := ResponseJSON.GetValue<string>('verification_uri');
-            // Also get device_code for polling
             Result := True;
           end;
         finally

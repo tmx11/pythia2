@@ -11,7 +11,7 @@ echo.
 
 REM Use bds.exe with silent flags - it will still briefly show/hide but no manual clicks needed
 REM Flags: -ns = no splash, -np = no component palette
-set BDS="C:\Program Files (x86)\Embarcadero\Studio\23.0\bin\bds.exe"
+set BDS="D:\Program Files (x86)\Embarcadero\Studio\23.0\bin\bds.exe"
 if not exist %BDS% (
     echo ERROR: BDS not found at %BDS%
     exit /b 1

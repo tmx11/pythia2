@@ -13,8 +13,11 @@ type
       const Model: string): string;
     class function BuildAnthropicRequest(const Messages: TArray<TChatMessage>; 
       const Model: string): string;
+    class function BuildGitHubCopilotRequest(const Messages: TArray<TChatMessage>; 
+      const Model: string): string;
     class function CallOpenAI(const RequestBody: string): string;
     class function CallAnthropic(const RequestBody: string): string;
+    class function CallGitHubCopilot(const RequestBody: string): string;
     class function ParseOpenAIResponse(const Response: string): string;
     class function ParseAnthropicResponse(const Response: string): string;
   public
@@ -25,7 +28,7 @@ type
 implementation
 
 uses
-  Pythia.Config;
+  Pythia.Config, Pythia.GitHub.Auth;
 
 { TPythiaAIClient }
 
@@ -39,7 +42,14 @@ begin
   
   try
     // Determine which API to use based on model name
-    if Pos('GPT', UpperCase(Model)) > 0 then
+    if Pos('COPILOT', UpperCase(Model)) > 0 then
+    begin
+      // GitHub Copilot API (FREE!)
+      RequestBody := BuildGitHubCopilotRequest(Messages, Model);
+      Response := CallGitHubCopilot(RequestBody);
+      Result := ParseOpenAIResponse(Response); // Same format as OpenAI
+    end
+    else if Pos('GPT', UpperCase(Model)) > 0 then
     begin
       // OpenAI API
       RequestBody := BuildOpenAIRequest(Messages, Model);
@@ -225,6 +235,95 @@ begin
       else
         raise Exception.CreateFmt('API Error %d: %s', 
           [Response.StatusCode, Response.StatusText]);
+    finally
+      Stream.Free;
+    end;
+  finally
+    HttpClient.Free;
+  end;
+end;
+
+class function TPythiaAIClient.BuildGitHubCopilotRequest(
+  const Messages: TArray<TChatMessage>; const Model: string): string;
+var
+  JSON: TJSONObject;
+  MsgArray: TJSONArray;
+  MsgObj: TJSONObject;
+  Msg: TChatMessage;
+  ModelName: string;
+begin
+  JSON := TJSONObject.Create;
+  try
+    // Map display name to API model name
+    if Pos('GPT-4', UpperCase(Model)) > 0 then
+      ModelName := 'gpt-4'
+    else if Pos('GPT-3.5', UpperCase(Model)) > 0 then
+      ModelName := 'gpt-3.5-turbo'
+    else
+      ModelName := 'gpt-4'; // Default to GPT-4
+      
+    JSON.AddPair('model', ModelName);
+    JSON.AddPair('temperature', TJSONNumber.Create(0.7));
+    JSON.AddPair('max_tokens', TJSONNumber.Create(4096));
+    
+    MsgArray := TJSONArray.Create;
+    
+    // Add system message first
+    MsgObj := TJSONObject.Create;
+    MsgObj.AddPair('role', 'system');
+    MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
+      'Help users with Delphi code, explain concepts, debug issues, and provide best practices.');
+    MsgArray.AddElement(MsgObj);
+    
+    // Add conversation messages
+    for Msg in Messages do
+    begin
+      MsgObj := TJSONObject.Create;
+      MsgObj.AddPair('role', Msg.Role);
+      MsgObj.AddPair('content', Msg.Content);
+      MsgArray.AddElement(MsgObj);
+    end;
+    
+    JSON.AddPair('messages', MsgArray);
+    Result := JSON.ToString;
+  finally
+    JSON.Free;
+  end;
+end;
+
+class function TPythiaAIClient.CallGitHubCopilot(const RequestBody: string): string;
+var
+  HttpClient: THTTPClient;
+  Response: IHTTPResponse;
+  Stream: TStringStream;
+  Token: string;
+begin
+  // Get GitHub Copilot authentication token
+  Token := TGitHubCopilotAuth.GetAuthToken;
+  if Token = '' then
+    raise Exception.Create('GitHub Copilot not authenticated. Please sign in with GitHub in Settings.');
+  
+  HttpClient := THTTPClient.Create;
+  try
+    HttpClient.ContentType := 'application/json';
+    HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + Token;
+    HttpClient.CustomHeaders['Editor-Version'] := 'Delphi-12.0';
+    HttpClient.CustomHeaders['Editor-Plugin-Version'] := 'pythia-1.0';
+    
+    Stream := TStringStream.Create(RequestBody, TEncoding.UTF8);
+    try
+      Response := HttpClient.Post('https://api.githubcopilot.com/chat/completions', Stream);
+      
+      if Response.StatusCode = 200 then
+        Result := Response.ContentAsString
+      else if Response.StatusCode = 401 then
+        raise Exception.Create('HTTP 401: GitHub authentication expired. Please sign in again in Settings.')
+      else if Response.StatusCode = 429 then
+        raise Exception.CreateFmt('HTTP 429: Rate limit exceeded. Response: %s', 
+          [Response.ContentAsString])
+      else
+        raise Exception.CreateFmt('HTTP %d: %s. Response: %s', 
+          [Response.StatusCode, Response.StatusText, Response.ContentAsString]);
     finally
       Stream.Free;
     end;

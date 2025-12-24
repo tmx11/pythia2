@@ -95,6 +95,8 @@ begin
   
   // Setup model selection
   ComboModel.Items.Clear;
+  ComboModel.Items.Add('GitHub Copilot: GPT-4');
+  ComboModel.Items.Add('GitHub Copilot: GPT-3.5 Turbo');
   ComboModel.Items.Add('GPT-4');
   ComboModel.Items.Add('GPT-3.5 Turbo');
   ComboModel.Items.Add('Claude 3.5 Sonnet');

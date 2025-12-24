@@ -34,8 +34,8 @@ type
     procedure ButtonSendClick(Sender: TObject);
     procedure ButtonClearClick(Sender: TObject);
     procedure ButtonSettingsClick(Sender: TObject);
-    procedure ButtonTestConnectionClick(Sender: TObject);
     procedure MemoInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure ButtonTestConnectionClick(Sender: TObject);
   private
     FMessages: TArray<TChatMessage>;
     FIsProcessing: Boolean;
@@ -76,8 +76,6 @@ begin
   FTotalTokensUsed := 0;
   FRequestCount := 0;
   SetLength(FMessages, 0);
-  
-  TestConnection;
   
   // Configure chat display
   MemoChat.ReadOnly := True;
@@ -229,15 +227,15 @@ begin
   TSettingsForm.Execute;
 end;
 
-procedure TChatWindow.MemoInputKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TChatWindow.MemoInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  // Ctrl+Enter to send
-  if (Key = VK_RETURN) and (ssCtrl in Shift) then
+  // Enter without Shift = Send message
+  if (Key = VK_RETURN) and (Shift = []) then
   begin
-    Key := 0;
+    Key := 0; // Suppress the Enter key
     SendMessageToAI;
   end;
+  // Shift+Enter = New line (default behavior, don't intercept)
 end;
 
 procedure TChatWindow.UpdateUI;

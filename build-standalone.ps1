@@ -31,17 +31,15 @@ if (Test-Path $ExePath) {
 
 Write-Host "Starting build process..."
 
-# Start NEW BDS process in background
-$Process = Start-Process -FilePath $BDS -ArgumentList "-ns","-b","PythiaApp.dproj" -PassThru -WindowStyle Minimized
+# Start NEW BDS process in background with output redirection
+$Process = Start-Process -FilePath $BDS `
+    -ArgumentList "-ns","-b","PythiaApp.dproj" `
+    -PassThru `
+    -RedirectStandardOutput "build-stdout.log" `
+    -RedirectStandardError "build-stderr.log" `
+    -WindowStyle Hidden
 $OurPID = $Process.Id
 Write-Host "Started BDS with PID: $OurPID" -ForegroundColor Cyan
-
-# Wait a moment for it to start
-Start-Sleep -Milliseconds 1000
-
-# Send Enter key to dismiss any dialog
-Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 
 # Wait for build to complete (check every 1 second, max 30 seconds)
 $Counter = 0
@@ -90,11 +88,24 @@ foreach ($ExistingPID in $ExistingBDS) {
 }
 
 Write-Host ""
-Write-Host "========== Build Log =========="
-if (Test-Path "build-app.log") {
-    Get-Content "build-app.log"
+Write-Host "========== Build Output =========="
+if (Test-Path "build-stdout.log") {
+    Get-Content "build-stdout.log"
 }
-Write-Host "========== End Log =========="
+if (Test-Path "build-stderr.log") {
+    $stderr = Get-Content "build-stderr.log"
+    if ($stderr) {
+        Write-Host ""
+        Write-Host "========== Errors/Warnings =========="
+        $stderr
+    }
+}
+if (Test-Path "PythiaApp.err") {
+    Write-Host ""
+    Write-Host "========== Compilation Errors (PythiaApp.err) =========="
+    Get-Content "PythiaApp.err"
+}
+Write-Host "========== End Build Output =========="
 Write-Host ""
 
 if ($BuildSuccess -and (Test-Path $ExePath)) {

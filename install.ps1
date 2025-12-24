@@ -120,7 +120,9 @@ Write-Host "  - Tools menu: Pythia AI Chat..." -ForegroundColor White
 Write-Host "  - Keyboard: Ctrl+Alt+P" -ForegroundColor White
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor White
-Write-Host "  1. Open Tools menu and select Pythia AI Chat" -ForegroundColor White
-Write-Host "  2. Click Settings button" -ForegroundColor White
-Write-Host "  3. Enter your OpenAI or Anthropic API key" -ForegroundColor White
+Write-Host "  1. Open Tools menu and select Pythia AI Chat (or press Ctrl+Alt+P)" -ForegroundColor White
+Write-Host "  2. Sign in with GitHub Copilot (free with GitHub account)" -ForegroundColor White
+Write-Host "  3. Or click Settings to enter OpenAI/Anthropic API key" -ForegroundColor White
+Write-Host ""
+Write-Host "Recommended: Use GitHub Copilot (no API key needed!)" -ForegroundColor Green
 Write-Host ""

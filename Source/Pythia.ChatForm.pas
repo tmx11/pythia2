@@ -571,12 +571,12 @@ begin
   begin
     case Item.ItemType of
       ctCurrentFile:
-        RefText := RefText + #13#10 + Format('  📄 %s', [ExtractFileName(Item.FilePath)]);
+        RefText := RefText + #13#10 + Format('  File: %s', [ExtractFileName(Item.FilePath)]);
       ctSelection:
-        RefText := RefText + #13#10 + Format('  ✂️ %s (lines %d-%d)', 
+        RefText := RefText + #13#10 + Format('  Selection: %s (lines %d-%d)', 
           [ExtractFileName(Item.FilePath), Item.LineStart, Item.LineEnd]);
       ctProjectFile:
-        RefText := RefText + #13#10 + Format('  📁 %s', [ExtractFileName(Item.FilePath)]);
+        RefText := RefText + #13#10 + Format('  Project: %s', [ExtractFileName(Item.FilePath)]);
     end;
   end;
   

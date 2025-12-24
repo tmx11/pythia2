@@ -3,15 +3,17 @@
 ## Dual Build System
 
 ### 🚀 Standalone App (Fast Testing)
-```powershell
-# Open in IDE
-PythiaApp.dproj
 
-# Or build from command line
-.\build-app.ps1 --run
+**In Delphi IDE:**
+1. File > Close All (close any open projects)
+2. File > Open Project > `PythiaApp.dproj`
+3. Press F9 to run
 
-# Output: Win32\Debug\PythiaApp.exe
-```
+**If you get "host application required" error:**
+- Project > Options > Application: Target type = **Application**
+- Project > Options > Debugger: Host Application = `$(OutputPath)\$(ProjectName).exe`
+
+**Output:** `Win32\Debug\PythiaApp.exe`
 
 ### 📦 IDE Plugin (Final Deployment)
 ```powershell

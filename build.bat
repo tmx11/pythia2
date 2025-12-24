@@ -1,23 +1,17 @@
 @echo off
 echo ========================================
-echo Building Pythia Package (Silent MSBuild)
+echo Building Pythia Package with Delphi IDE
 echo ========================================
 cd /d "d:\dev\delphi\pythia2"
 
 del build.log 2>nul
 
-echo Building pythia.dproj...
+echo Building project...
+"d:\program files (x86)\embarcadero\studio\23.0\bin\bds.exe" -ns -b "pythia.dproj" -obuild.log
+
+timeout /t 3 >nul
+
 echo.
-
-REM Use .NET Framework MSBuild for silent headless build (no IDE popups)
-set MSBUILD=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe
-if not exist "%MSBUILD%" (
-    echo ERROR: MSBuild not found at %MSBUILD%
-    exit /b 1
-)
-
-"%MSBUILD%" pythia.dproj /t:Build /p:Config=Debug /p:Platform=Win32 /nologo /verbosity:minimal > build.log 2>&1
-
 echo Exit code: %ERRORLEVEL%
 echo.
 

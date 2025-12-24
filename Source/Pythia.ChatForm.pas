@@ -327,10 +327,10 @@ begin
   end;
   
   if IsAuthenticated then
-    StatusBar.SimpleText := Format('✓ Connected to %s | Model: %s | Requests: %d | Est. Tokens: %d',
+    StatusBar.SimpleText := Format('Connected to %s | Model: %s | Requests: %d | Est. Tokens: %d',
       [Provider, ComboModel.Text, FRequestCount, FTotalTokensUsed])
   else
-    StatusBar.SimpleText := '⚠ No authentication - Click Settings to configure';
+    StatusBar.SimpleText := 'No authentication - Click Settings to configure';
 end;
 
 procedure TChatWindow.TestConnection;
@@ -368,27 +368,27 @@ begin
   
   if not IsAuthenticated then
   begin
-    StatusBar.SimpleText := '⚠ Not authenticated - Configure in Settings';
+    StatusBar.SimpleText := 'Not authenticated - Configure in Settings';
     if Pos('COPILOT', UpperCase(ComboModel.Text)) > 0 then
     begin
       Msg := Format('CONNECTION TEST%s%s' +
-        '━━━━━━━━━━━━━━━━━━━━━━%s' +
+        '----------------------%s' +
         'Provider: %s%s' +
         'Endpoint: %s%s' +
         'Model: %s%s' +
-        'Status: ⚠ Not signed in with GitHub%s%s' +
+        'Status: Not signed in with GitHub%s%s' +
         'Please click Settings button to sign in with GitHub.',
         [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, #13#10]);
     end
     else
     begin
       Msg := Format('CONNECTION TEST%s%s' +
-        '━━━━━━━━━━━━━━━━━━━━━━%s' +
+        '----------------------%s' +
         'Provider: %s%s' +
         'Endpoint: %s%s' +
         'Model: %s%s' +
         'API Key: NOT CONFIGURED%s' +
-        'Status: ⚠ Authentication Required%s%s' +
+        'Status: Authentication Required%s%s' +
         'Please click Settings button to configure your API key.',
         [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, #13#10, #13#10, #13#10]);
     end;
@@ -436,7 +436,7 @@ begin
     
     if Response <> '' then
     begin
-      AddMessage('assistant', Format('✓ Authentication Successful%s%sAPI Response: %s', 
+      AddMessage('assistant', Format('Authentication Successful%s%sAPI Response: %s', 
         [#13#10, #13#10, Response]));
       UpdateStatusBar;
     end;

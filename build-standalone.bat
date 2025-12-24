@@ -1,17 +1,25 @@
 @echo off
 echo ========================================
-echo Building Pythia Standalone App
+echo Building Pythia Standalone App (Silent)
 echo ========================================
 cd /d "d:\dev\delphi\pythia2"
 
 del build-app.log 2>nul
 
 echo Building PythiaApp.dproj...
-"d:\program files (x86)\embarcadero\studio\23.0\bin\bds.exe" -ns -b "PythiaApp.dproj" -obuild-app.log
-
-timeout /t 3 >nul
-
 echo.
+
+REM Use bds.exe with silent flags - it will still briefly show/hide but no manual clicks needed
+REM Flags: -ns = no splash, -np = no component palette
+set BDS="C:\Program Files (x86)\Embarcadero\Studio\23.0\bin\bds.exe"
+if not exist %BDS% (
+    echo ERROR: BDS not found at %BDS%
+    exit /b 1
+)
+
+REM Redirect to log, no interactive dialogs
+%BDS% -ns -np -b "PythiaApp.dproj" > build-app.log 2>&1
+
 echo Exit code: %ERRORLEVEL%
 echo.
 

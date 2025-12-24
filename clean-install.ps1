@@ -109,11 +109,14 @@ $description = "Pythia - AI Chat Assistant for Delphi"
 New-ItemProperty -Path $RegistryPath -Name $SystemBpl -Value $description -PropertyType String -Force | Out-Null
 Write-Host "  Registered in IDE" -ForegroundColor Green
 
-# Step 6: Launch Delphi
+# Step 6: Launch Delphi with project
 if (-not $NoRestart) {
     Write-Host "`n[6/6] Starting Delphi IDE..." -ForegroundColor Yellow
-    Start-Process $DelphiExe
-    Write-Host "  Delphi IDE launched" -ForegroundColor Green
+    Start-Process $DelphiExe -ArgumentList "$ProjectDir\pythia.dproj"
+    Start-Sleep -Seconds 2
+    Write-Host "  Delphi IDE launched with pythia.dproj" -ForegroundColor Green
+    Write-Host "  Opening source file..." -ForegroundColor Gray
+    # The IDE will auto-open the project and last opened files
 } else {
     Write-Host "`n[6/6] Skipping IDE restart" -ForegroundColor Yellow
 }

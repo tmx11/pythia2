@@ -4,23 +4,43 @@ A VS Code Copilot-style AI chat assistant plugin for Embarcadero Delphi 12.
 
 ## Features
 
+- **GitHub Copilot Integration**: Use GitHub Copilot Chat (FREE tier) - no API keys required! 🆓
 - **Integrated Chat Window**: VS Code-style chat interface accessible via `Tools > Pythia AI Chat` or `Ctrl+Shift+P`
-- **Multiple AI Models**: Support for OpenAI (GPT-4, GPT-3.5) and Anthropic (Claude 3.5 Sonnet, Claude 3 Opus)
+- **Multiple AI Models**: GitHub Copilot (GPT-4, Claude 3.5), OpenAI, Anthropic
 - **Delphi Expert**: Trained to help with Delphi programming questions, code review, and debugging
-- **Persistent Configuration**: API keys stored securely in user's AppData folder
+- **Persistent Configuration**: OAuth tokens stored securely in user's AppData folder
 
-## Installation
+## Development Workflow
 
-1. Open `pythia.dproj` in Delphi 12
+### Quick Testing (Standalone App)
+For rapid development without IDE reinstallation:
+
+1. Open `PythiaApp.dproj` in Delphi 12
+2. Press **F9** to compile and run
+3. Test chat functionality in standalone window
+4. Make changes, rebuild, repeat
+
+### IDE Plugin Installation
+Once features are verified in standalone app:
+
+1. Open `pythia.dproj` (the package project)
 2. Build the package (Project > Build pythia)
-3. Install the package (Component > Install Packages > Add > select compiled BPL)
+3. Run `install.ps1` to install into IDE
 4. Restart Delphi IDE
+
+**Both projects share the same Source/*.pas units** - changes automatically work in both!
 
 ## Configuration
 
-1. After installation, open **Tools > Pythia AI Chat**
+### GitHub Copilot (Recommended - FREE)
+1. Open **Tools > Pythia AI Chat** (or run PythiaApp.exe)
 2. Click **Settings** button
-3. Enter your API keys:
+3. Click **Sign in with GitHub**
+4. Enter the device code shown at https://github.com/login/device
+5. You're ready! No API keys needed.
+
+### API Keys (Optional)
+If you want to use OpenAI/Anthropic directly:
    - OpenAI API key from https://platform.openai.com/api-keys
    - Anthropic API key from https://console.anthropic.com/settings/keys
 

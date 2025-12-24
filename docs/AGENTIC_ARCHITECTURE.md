@@ -1,10 +1,340 @@
 # Pythia Agentic Architecture - Technical Summary
 
-**Goal**: Add file reading/editing capabilities to Pythia, matching VS Code Copilot's agentic functionality.
+**Updated**: December 24, 2025  
+**Status**: Phase 0 Complete (GitHub Copilot Auth), Phase 1 In Progress (Workspace Context)
+
+**Goal**: Add intelligent workspace context injection to Pythia, enabling it to "see" and understand the codebase like VS Code Copilot.
 
 ---
 
-## 0. GitHub Copilot Chat Integration (PRIMARY API)
+## 0. COMPLETED: GitHub Copilot Chat Integration ✅
+
+Successfully implemented December 2025. See git history for implementation details.
+
+---
+
+## 1. Workspace Context Injection (CURRENT FOCUS)
+
+### 1.1 How GitHub Copilot Does It
+
+Research from https://docs.github.com/copilot and https://code.visualstudio.com/docs/copilot shows:
+
+**Chat Variables (#-mentions)**:
+- `#file` - Reference specific file: "#file:Pythia.ChatForm.pas explain this"
+- `#selection` - Include selected text from editor
+- `#codebase` - Search/reference across entire project  
+- `#terminalSelection` - Include terminal output
+
+**Reference Tracking**:
+- Responses show "Used n references" dropdown
+- Lists files/context injected into request
+- Transparent about what the AI "saw"
+
+**Token Management**:
+- GitHub Copilot uses ~8k-32k token context window
+- Intelligent prioritization: selection > current file > related files > project structure
+- Automatic truncation of less relevant context when over limit
+
+**Model Context Protocol (MCP)**:
+- Extensible system for adding custom context sources
+- Standard protocol for AI tools to access external data
+- Can integrate databases, APIs, issue trackers, etc.
+
+### 1.2 Delphi-Specific Context Strategy
+
+**Three-Tier Context System**:
+
+1. **Immediate Context** (Always Included - ~500 tokens):
+   - Current active file name & path
+   - Current cursor position/selection (if any)
+   - Nearby code (±50 lines around cursor)
+
+2. **Extended Context** (Included if space - ~2000 tokens):
+   - Full current file content
+   - Related files (interface/implementation pairs)
+   - Recently edited files (from IDE history)
+
+3. **Project Context** (On-demand or with #codebase - ~5000 tokens):
+   - Project file list (.dproj parsing)
+   - Unit dependency graph
+   - Types/functions index (future: beads database?)
+
+### 1.3 Why Not Just Spam Everything?
+
+**Problems with naive "send all files" approach**:
+- ❌ Wastes tokens on irrelevant code
+- ❌ Dilutes important context with noise
+- ❌ Slows AI processing (more to parse)
+- ❌ Hits token limits quickly on large projects
+- ❌ Costs more $ per request (if using paid APIs)
+
+**Smart context gathering advantages**:
+- ✅ Faster responses (less processing)
+- ✅ More relevant answers (focused context)
+- ✅ Scales to large projects (10k+ files)
+- ✅ Cheaper API costs
+- ✅ Better AI understanding (signal vs noise)
+
+### 1.4 Beads Integration Consideration
+
+**User's insight**: "maybe we should take notes from beads or just make beads a direct requirement"
+
+**Beads architecture** (from .beads/ directory):
+- SQLite database with graph structure
+- JSONL for portability
+- Issue linking and dependencies
+- Rich metadata and relationships
+
+**Potential uses for context**:
+1. **Code Relationship Graph**: Track which units depend on which
+2. **Symbol Index**: Fast lookup of classes/functions across project
+3. **Change History**: What files change together (git blame style)
+4. **Issue-Code Links**: "This code relates to issue pythia2-5j4"
+
+**Decision**: 
+- **Phase 1**: Implement basic context (current file, selection, project list)
+- **Phase 2 (Future)**: Optional beads integration for advanced graph-based context
+- **Rationale**: Don't over-engineer. Prove basic context works first, then add intelligence.
+
+---
+
+## 2. Implementation Plan
+
+### 2.1 New Unit: Pythia.Context.pas
+
+**Purpose**: Gather and format workspace context for AI requests
+
+**Key Types**:
+```pascal
+type
+  TContextItem = record
+    ItemType: (ctCurrentFile, ctSelection, ctProjectFile, ctRelatedFile);
+    FilePath: string;
+    Content: string;
+    LineStart, LineEnd: Integer;  // For selections
+    TokenCount: Integer;
+  end;
+
+  IContextProvider = interface
+    function GetCurrentFile: TContextItem;
+    function GetSelection: TContextItem;
+    function GetProjectFiles: TArray<string>;
+    function GetRelatedFiles(const FileName: string): TArray<string>;
+    function EstimateTokens(const Text: string): Integer;
+  end;
+
+  TIDEContextProvider = class(TInterfacedObject, IContextProvider)
+    // Uses ToolsAPI - for BPL plugin
+  end;
+
+  TStandaloneContextProvider = class(TInterfacedObject, IContextProvider)
+    // Uses filesystem - for standalone app
+  end;
+```
+
+**Token Estimation**:
+```pascal
+function TContextProvider.EstimateTokens(const Text: string): Integer;
+begin
+  // Rough estimate: 1 token ≈ 4 characters for English text
+  // Code is denser, use 1 token ≈ 3 characters
+  Result := Length(Text) div 3;
+end;
+```
+
+### 2.2 Modified Unit: Pythia.AI.Client.pas
+
+**Add Context Parameter**:
+```pascal
+class function TPythiaAIClient.SendMessage(
+  const AModel: string;
+  const AMessages: TArray<TChatMessage>;
+  const AContext: TArray<TContextItem>  // NEW!
+): string;
+begin
+  // 1. Calculate total context tokens
+  TokenBudget := GetModelTokenLimit(AModel);  // 8192 for GPT-4
+  UsedTokens := EstimateMessageTokens(AMessages);
+  
+  // 2. Prioritize context items
+  //    - ctSelection: Always include (highest priority)
+  //    - ctCurrentFile: Include if fits
+  //    - ctRelatedFile: Include if space remains
+  //    - ctProjectFile: Only file names, not content
+  
+  // 3. Build context prefix
+  ContextStr := FormatContextForAI(FilteredContext);
+  
+  // 4. Inject as system message or user prefix
+  ModifiedMessages := InjectContext(AMessages, ContextStr);
+  
+  // 5. Send to API
+  Result := CallActualAPI(AModel, ModifiedMessages);
+end;
+```
+
+**Context Formatting**:
+```pascal
+function FormatContextForAI(const Context: TArray<TContextItem>): string;
+begin
+  Result := '';
+  for Item in Context do
+    case Item.ItemType of
+      ctCurrentFile:
+        Result := Result + Format('## Current File: %s'#13#10'```pascal'#13#10'%s'#13#10'```'#13#10,
+                                 [Item.FilePath, Item.Content]);
+      ctSelection:
+        Result := Result + Format('## Selected Code (Lines %d-%d):'#13#10'```pascal'#13#10'%s'#13#10'```'#13#10,
+                                 [Item.LineStart, Item.LineEnd, Item.Content]);
+      ctProjectFile:
+        Result := Result + Format('- %s'#13#10, [Item.FilePath]);
+    end;
+end;
+```
+
+### 2.3 Modified Unit: Pythia.ChatForm.pas
+
+**Add Context UI**:
+```pascal
+private
+  FContextProvider: IContextProvider;
+  FAutoContext: Boolean;  // Setting: automatically include context
+  
+  procedure UpdateContextStatus;  // Show "Context: 3 files (2.1k tokens)"
+  procedure RefreshContext;
+  function GatherContext: TArray<TContextItem>;
+```
+
+**UI Elements**:
+```
+┌─────────────────────────────────────────────────┐
+│ Pythia AI Chat                                  │
+├─────────────────────────────────────────────────┤
+│ [Chat Display]                                  │
+│                                                 │
+│ Response uses context:                          │
+│   📄 Pythia.ChatForm.pas (lines 1-150)          │
+│   📄 Pythia.AI.Client.pas                       │
+│   📁 Project: 12 files                          │
+├─────────────────────────────────────────────────┤
+│ Context: Auto ✓ | 3 files | 2.1k tokens [↻]   │
+├─────────────────────────────────────────────────┤
+│ [Input]                                         │
+│   Tip: Use #file:name or #selection            │
+└─────────────────────────────────────────────────┘
+```
+
+**Send Message Flow**:
+```pascal
+procedure TChatWindow.SendMessageToAI;
+var
+  Context: TArray<TContextItem>;
+begin
+  // 1. Gather context
+  if FAutoContext then
+    Context := GatherContext
+  else
+    Context := ParseManualContext(MemoInput.Text);  // #file:xyz
+  
+  // 2. Send with context
+  Response := TPythiaAIClient.SendMessage(
+    ComboModel.Text,
+    FMessages,
+    Context  // NEW!
+  );
+  
+  // 3. Show what context was used
+  DisplayContextReferences(Context);
+end;
+```
+
+### 2.4 IDE vs Standalone Context
+
+**IDE Plugin (pythia.bpl)**:
+```pascal
+TIDEContextProvider.GetCurrentFile: TContextItem;
+var
+  Module: IOTAModule;
+  Editor: IOTASourceEditor;
+  Reader: IOTAEditReader;
+begin
+  Module := (BorlandIDEServices as IOTAModuleServices).CurrentModule;
+  if Assigned(Module) then
+  begin
+    Editor := Module.GetModuleFileEditor(0) as IOTASourceEditor;
+    Reader := Editor.CreateReader;
+    Result.Content := Reader.GetText;
+    Result.FilePath := Editor.FileName;
+  end;
+end;
+```
+
+**Standalone App (PythiaApp.exe)**:
+```pascal
+TStandaloneContextProvider.GetCurrentFile: TContextItem;
+begin
+  // Option 1: Command-line arg: --project "path\to\project.dproj"
+  // Option 2: Settings UI: Browse for project
+  // Option 3: Detect if launched from IDE (parent process = bds.exe)
+  
+  if FProjectPath <> '' then
+  begin
+    ParseDprojFile(FProjectPath);  // Get source file list
+    // Return most recently modified .pas file as "current"
+  end;
+end;
+```
+
+---
+
+## 3. Testing Strategy
+
+**Phase 1 Tests** (Manual IDE Testing):
+1. Open Delphi project with Pythia plugin installed
+2. Open a .pas file in editor
+3. Select a block of code
+4. Ask Pythia: "explain this code"
+5. Verify response includes: "Based on the selected code from Pythia.ChatForm.pas..."
+6. Check "Used references" shows the correct file
+
+**Phase 2 Tests** (Automated):
+1. Token counting accuracy (compare with tiktoken library estimates)
+2. Context truncation (verify least important items dropped first)
+3. Context formatting (valid markdown, code fences)
+4. IDE vs Standalone parity (both gather equivalent context when possible)
+
+**Phase 3 Tests** (Real-world scenarios):
+1. Large project (1000+ files) - does context gathering remain fast?
+2. Binary files in project - properly excluded from context?
+3. Very long files (10k+ lines) - intelligent snippet extraction?
+
+---
+
+## 4. Future Enhancements (Post-MVP)
+
+### 4.1 Smart Context Selection
+- Semantic search: "Find code related to user authentication"
+- Type inference: Automatically include interface definitions for used classes
+- Call graph: Include called/calling functions
+
+### 4.2 Beads Integration
+```pascal
+// Pythia.Context.Beads.pas - optional dependency
+function GetRelatedIssues(const FileName: string): TArray<string>;
+begin
+  // Query .beads/*.db for issues mentioning this file
+  // Include issue titles in context: "Working on: pythia2-5j4 (context injection)"
+end;
+```
+
+### 4.3 Custom Context Plugins
+- MCP server integration (like VS Code)
+- .pythia-context.json file in project root
+- User-defined context gathering scripts
+
+---
+
+## 0 (Historical). GitHub Copilot Chat Integration (PRIMARY API)
 
 **Why Copilot Chat > API Keys**:
 - ✅ FREE tier available (GitHub Copilot Individual - $10/mo includes chat)

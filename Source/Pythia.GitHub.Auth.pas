@@ -19,8 +19,10 @@ type
   TGitHubCopilotAuth = class
   private
     class var FAuthToken: string;
+    class var FCopilotToken: string;
     class var FUsername: string;
     class var FStatus: TGitHubAuthStatus;
+    class function GetCopilotToken(const OAuthToken: string): string;
   public
     // GitHub OAuth Device Flow - matches VS Code Copilot
     class function StartDeviceFlow(out DeviceCode: string; out UserCode: string; out VerificationUri: string): Boolean;
@@ -40,6 +42,7 @@ const
   GITHUB_DEVICE_CODE_URL = 'https://github.com/login/device/code';
   GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
   GITHUB_USER_URL = 'https://api.github.com/user';
+  GITHUB_COPILOT_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
 
 implementation
 
@@ -47,6 +50,14 @@ uses
   Pythia.Config;
 
 { TGitHubCopilotAuth }
+
+{ Authentication Flow (based on github.com/github/copilot.vim):
+  1. OAuth Device Flow: Get user_code and device_code from GitHub
+  2. User authorizes in browser with user_code
+  3. Poll for OAuth access_token
+  4. Exchange OAuth token for Copilot-specific token at copilot_internal/v2/token
+  5. Use Copilot token for chat API calls
+}
 
 class function TGitHubCopilotAuth.StartDeviceFlow(out DeviceCode, UserCode, VerificationUri: string): Boolean;
 var
@@ -184,7 +195,45 @@ class function TGitHubCopilotAuth.GetAuthToken: string;
 begin
   if FAuthToken = '' then
     LoadCachedToken;
-  Result := FAuthToken;
+  
+  // Exchange OAuth token for Copilot-specific token if needed
+  if (FAuthToken <> '') and (FCopilotToken = '') then
+    FCopilotToken := GetCopilotToken(FAuthToken);
+  
+  Result := FCopilotToken;
+end;
+
+class function TGitHubCopilotAuth.GetCopilotToken(const OAuthToken: string): string;
+var
+  HttpClient: THTTPClient;
+  Response: IHTTPResponse;
+  ResponseJSON: TJSONObject;
+begin
+  Result := '';
+  
+  if OAuthToken = '' then
+    Exit;
+  
+  HttpClient := THTTPClient.Create;
+  try
+    HttpClient.CustomHeaders['Authorization'] := 'token ' + OAuthToken;
+    HttpClient.Accept := 'application/json';
+    
+    Response := HttpClient.Get(GITHUB_COPILOT_TOKEN_URL);
+    
+    if Response.StatusCode = 200 then
+    begin
+      ResponseJSON := TJSONObject.ParseJSONValue(Response.ContentAsString) as TJSONObject;
+      try
+        if Assigned(ResponseJSON) then
+          Result := ResponseJSON.GetValue<string>('token');
+      finally
+        ResponseJSON.Free;
+      end;
+    end;
+  finally
+    HttpClient.Free;
+  end;
 end;
 
 class function TGitHubCopilotAuth.GetUsername: string;

@@ -60,6 +60,7 @@ uses
   System.DateUtils,
   Pythia.AI.Client,
   Pythia.Config,
+  Pythia.GitHub.Auth,
   Pythia.SettingsForm;
 
 {$R *.dfm}
@@ -250,24 +251,32 @@ procedure TChatWindow.UpdateStatusBar;
 var
   APIKey: string;
   Provider: string;
+  IsAuthenticated: Boolean;
 begin
   // Determine provider from model selection
-  if Pos('Claude', ComboModel.Text) > 0 then
+  if Pos('COPILOT', UpperCase(ComboModel.Text)) > 0 then
+  begin
+    Provider := 'GitHub Copilot';
+    IsAuthenticated := TGitHubCopilotAuth.IsAuthenticated;
+  end
+  else if Pos('Claude', ComboModel.Text) > 0 then
   begin
     Provider := 'Anthropic';
     APIKey := TPythiaConfig.GetAnthropicKey;
+    IsAuthenticated := APIKey <> '';
   end
   else
   begin
     Provider := 'OpenAI';
     APIKey := TPythiaConfig.GetOpenAIKey;
+    IsAuthenticated := APIKey <> '';
   end;
   
-  if APIKey <> '' then
+  if IsAuthenticated then
     StatusBar.SimpleText := Format('✓ Connected to %s | Model: %s | Requests: %d | Est. Tokens: %d',
       [Provider, ComboModel.Text, FRequestCount, FTotalTokensUsed])
   else
-    StatusBar.SimpleText := '⚠ No API key configured - Click Settings to add key';
+    StatusBar.SimpleText := '⚠ No authentication - Click Settings to configure';
 end;
 
 procedure TChatWindow.TestConnection;
@@ -278,47 +287,85 @@ var
   TestMessages: TArray<TChatMessage>;
   Response: string;
   Msg: string;
+  IsAuthenticated: Boolean;
 begin
-  // Check if we have an API key for the selected model
-  if Pos('Claude', ComboModel.Text) > 0 then
+  // Check if we have authentication for the selected model
+  if Pos('COPILOT', UpperCase(ComboModel.Text)) > 0 then
+  begin
+    IsAuthenticated := TGitHubCopilotAuth.IsAuthenticated;
+    Provider := 'GitHub Copilot';
+    Endpoint := 'https://api.githubcopilot.com/chat/completions';
+    APIKey := 'GitHub OAuth'; // Display text only
+  end
+  else if Pos('Claude', ComboModel.Text) > 0 then
   begin
     APIKey := TPythiaConfig.GetAnthropicKey;
     Provider := 'Anthropic';
     Endpoint := 'https://api.anthropic.com/v1/messages';
+    IsAuthenticated := APIKey <> '';
   end
   else
   begin
     APIKey := TPythiaConfig.GetOpenAIKey;
     Provider := 'OpenAI';
     Endpoint := 'https://api.openai.com/v1/chat/completions';
+    IsAuthenticated := APIKey <> '';
   end;
   
-  if APIKey = '' then
+  if not IsAuthenticated then
   begin
-    StatusBar.SimpleText := '⚠ No API key - Configure in Settings';
-    Msg := Format('CONNECTION TEST%s%s' +
-      '━━━━━━━━━━━━━━━━━━━━━━%s' +
-      'Provider: %s%s' +
-      'Endpoint: %s%s' +
-      'Model: %s%s' +
-      'API Key: NOT CONFIGURED%s' +
-      'Status: ⚠ Authentication Required%s%s' +
-      'Please click Settings button to configure your API key.',
-      [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, #13#10, #13#10, #13#10]);
+    StatusBar.SimpleText := '⚠ Not authenticated - Configure in Settings';
+    if Pos('COPILOT', UpperCase(ComboModel.Text)) > 0 then
+    begin
+      Msg := Format('CONNECTION TEST%s%s' +
+        '━━━━━━━━━━━━━━━━━━━━━━%s' +
+        'Provider: %s%s' +
+        'Endpoint: %s%s' +
+        'Model: %s%s' +
+        'Status: ⚠ Not signed in with GitHub%s%s' +
+        'Please click Settings button to sign in with GitHub.',
+        [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, #13#10]);
+    end
+    else
+    begin
+      Msg := Format('CONNECTION TEST%s%s' +
+        '━━━━━━━━━━━━━━━━━━━━━━%s' +
+        'Provider: %s%s' +
+        'Endpoint: %s%s' +
+        'Model: %s%s' +
+        'API Key: NOT CONFIGURED%s' +
+        'Status: ⚠ Authentication Required%s%s' +
+        'Please click Settings button to configure your API key.',
+        [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, #13#10, #13#10, #13#10]);
+    end;
     AddMessage('assistant', Msg);
     Exit;
   end;
   
   // Show connection details
-  Msg := Format('CONNECTION TEST%s%s' +
-    '━━━━━━━━━━━━━━━━━━━━━━%s' +
-    'Provider: %s%s' +
-    'Endpoint: %s%s' +
-    'Model: %s%s' +
-    'API Key: %s...%s (length: %d)%s' +
-    'Testing authentication...',
-    [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, 
-     Copy(APIKey, 1, 20), Copy(APIKey, Length(APIKey) - 4, 5), Length(APIKey), #13#10]);
+  if Pos('COPILOT', UpperCase(ComboModel.Text)) > 0 then
+  begin
+    Msg := Format('CONNECTION TEST%s%s' +
+      '━━━━━━━━━━━━━━━━━━━━━━%s' +
+      'Provider: %s%s' +
+      'Endpoint: %s%s' +
+      'Model: %s%s' +
+      'Authentication: GitHub OAuth%s' +
+      'Testing connection...',
+      [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, #13#10]);
+  end
+  else
+  begin
+    Msg := Format('CONNECTION TEST%s%s' +
+      '━━━━━━━━━━━━━━━━━━━━━━%s' +
+      'Provider: %s%s' +
+      'Endpoint: %s%s' +
+      'Model: %s%s' +
+      'API Key: %s...%s (length: %d)%s' +
+      'Testing authentication...',
+      [#13#10, #13#10, #13#10, Provider, #13#10, Endpoint, #13#10, ComboModel.Text, #13#10, 
+       Copy(APIKey, 1, 20), Copy(APIKey, Length(APIKey) - 4, 5), Length(APIKey), #13#10]);
+  end;
   AddMessage('assistant', Msg);
   
   // Make actual test API call

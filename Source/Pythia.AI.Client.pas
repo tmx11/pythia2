@@ -307,8 +307,9 @@ begin
   try
     HttpClient.ContentType := 'application/json';
     HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + Token;
-    HttpClient.CustomHeaders['Editor-Version'] := 'Delphi-12.0';
-    HttpClient.CustomHeaders['Editor-Plugin-Version'] := 'pythia-1.0';
+    HttpClient.CustomHeaders['Editor-Version'] := 'vscode/1.85.0';
+    HttpClient.CustomHeaders['Editor-Plugin-Version'] := 'copilot-chat/0.11.0';
+    HttpClient.CustomHeaders['User-Agent'] := 'GithubCopilot/1.0 (Delphi/12.0)';
     
     Stream := TStringStream.Create(RequestBody, TEncoding.UTF8);
     try

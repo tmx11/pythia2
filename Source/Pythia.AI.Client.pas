@@ -1,0 +1,286 @@
+unit Pythia.AI.Client;
+
+interface
+
+uses
+  System.SysUtils, System.Classes, System.JSON, System.Net.HttpClient,
+  System.Net.URLClient, Pythia.ChatForm;
+
+type
+  TPythiaAIClient = class
+  private
+    class function BuildOpenAIRequest(const Messages: TArray<TChatMessage>; 
+      const Model: string): string;
+    class function BuildAnthropicRequest(const Messages: TArray<TChatMessage>; 
+      const Model: string): string;
+    class function CallOpenAI(const RequestBody: string): string;
+    class function CallAnthropic(const RequestBody: string): string;
+    class function ParseOpenAIResponse(const Response: string): string;
+    class function ParseAnthropicResponse(const Response: string): string;
+  public
+    class function SendMessage(const Messages: TArray<TChatMessage>; 
+      const Model: string): string;
+  end;
+
+implementation
+
+uses
+  Pythia.Config;
+
+{ TPythiaAIClient }
+
+class function TPythiaAIClient.SendMessage(const Messages: TArray<TChatMessage>;
+  const Model: string): string;
+var
+  RequestBody: string;
+  Response: string;
+begin
+  Result := '';
+  
+  try
+    // Determine which API to use based on model name
+    if Pos('GPT', UpperCase(Model)) > 0 then
+    begin
+      // OpenAI API
+      RequestBody := BuildOpenAIRequest(Messages, Model);
+      Response := CallOpenAI(RequestBody);
+      Result := ParseOpenAIResponse(Response);
+    end
+    else if Pos('CLAUDE', UpperCase(Model)) > 0 then
+    begin
+      // Anthropic API
+      RequestBody := BuildAnthropicRequest(Messages, Model);
+      Response := CallAnthropic(RequestBody);
+      Result := ParseAnthropicResponse(Response);
+    end;
+  except
+    on E: Exception do
+    begin
+      // Provide user-friendly error messages
+      if Pos('429', E.Message) > 0 then
+        Result := 'Error: Rate limit exceeded. Please wait a moment and try again. ' +
+                  'You may have exceeded your API quota or made too many requests.'
+      else if Pos('401', E.Message) > 0 then
+        Result := 'Error: Invalid API key. Please check your settings.'
+      else if Pos('403', E.Message) > 0 then
+        Result := 'Error: Access forbidden. Check your API key permissions.'
+      else
+        Result := 'Error: ' + E.Message;
+    end;
+  end;
+end;
+
+class function TPythiaAIClient.BuildOpenAIRequest(
+  const Messages: TArray<TChatMessage>; const Model: string): string;
+var
+  JSON: TJSONObject;
+  MsgArray: TJSONArray;
+  Msg: TChatMessage;
+  MsgObj: TJSONObject;
+  ModelName: string;
+begin
+  JSON := TJSONObject.Create;
+  try
+    // Map display name to API model name
+    if Pos('GPT-4', Model) > 0 then
+      ModelName := 'gpt-4'
+    else if Pos('GPT-3.5', Model) > 0 then
+      ModelName := 'gpt-3.5-turbo'
+    else
+      ModelName := 'gpt-4';
+      
+    JSON.AddPair('model', ModelName);
+    JSON.AddPair('temperature', TJSONNumber.Create(0.7));
+    JSON.AddPair('max_tokens', TJSONNumber.Create(2000));
+    
+    MsgArray := TJSONArray.Create;
+    
+    // Add system message
+    MsgObj := TJSONObject.Create;
+    MsgObj.AddPair('role', 'system');
+    MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
+      'Help users with Delphi code, explain concepts, debug issues, and provide best practices.');
+    MsgArray.AddElement(MsgObj);
+    
+    // Add conversation messages
+    for Msg in Messages do
+    begin
+      MsgObj := TJSONObject.Create;
+      MsgObj.AddPair('role', Msg.Role);
+      MsgObj.AddPair('content', Msg.Content);
+      MsgArray.AddElement(MsgObj);
+    end;
+    
+    JSON.AddPair('messages', MsgArray);
+    Result := JSON.ToString;
+  finally
+    JSON.Free;
+  end;
+end;
+
+class function TPythiaAIClient.BuildAnthropicRequest(
+  const Messages: TArray<TChatMessage>; const Model: string): string;
+var
+  JSON: TJSONObject;
+  MsgArray: TJSONArray;
+  Msg: TChatMessage;
+  MsgObj: TJSONObject;
+  ModelName: string;
+begin
+  JSON := TJSONObject.Create;
+  try
+    // Map display name to API model name
+    if Pos('3.5 SONNET', UpperCase(Model)) > 0 then
+      ModelName := 'claude-3-5-sonnet-20241022'
+    else if Pos('OPUS', UpperCase(Model)) > 0 then
+      ModelName := 'claude-3-opus-20240229'
+    else
+      ModelName := 'claude-3-5-sonnet-20241022';
+      
+    JSON.AddPair('model', ModelName);
+    JSON.AddPair('max_tokens', TJSONNumber.Create(4096));
+    JSON.AddPair('system', 'You are Pythia, an expert Delphi programming assistant. ' +
+      'Help users with Delphi code, explain concepts, debug issues, and provide best practices.');
+    
+    MsgArray := TJSONArray.Create;
+    
+    // Add conversation messages (skip system message for Anthropic)
+    for Msg in Messages do
+    begin
+      MsgObj := TJSONObject.Create;
+      MsgObj.AddPair('role', Msg.Role);
+      MsgObj.AddPair('content', Msg.Content);
+      MsgArray.AddElement(MsgObj);
+    end;
+    
+    JSON.AddPair('messages', MsgArray);
+    Result := JSON.ToString;
+  finally
+    JSON.Free;
+  end;
+end;
+
+class function TPythiaAIClient.CallOpenAI(const RequestBody: string): string;
+var
+  HttpClient: THTTPClient;
+  Response: IHTTPResponse;
+  Stream: TStringStream;
+  APIKey: string;
+begin
+  APIKey := TPythiaConfig.GetOpenAIKey;
+  if APIKey = '' then
+    raise Exception.Create('OpenAI API key not configured. Please set it in Settings.');
+  
+  HttpClient := THTTPClient.Create;
+  try
+    HttpClient.ContentType := 'application/json';
+    HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + APIKey;
+    
+    Stream := TStringStream.Create(RequestBody, TEncoding.UTF8);
+    try
+      Response := HttpClient.Post('https://api.openai.com/v1/chat/completions', Stream);
+      
+      if Response.StatusCode = 200 then
+        Result := Response.ContentAsString
+      else if Response.StatusCode = 401 then
+        raise Exception.CreateFmt('HTTP 401: Invalid API key. Check your OpenAI key in Settings. Response: %s', 
+          [Response.ContentAsString])
+      else if Response.StatusCode = 429 then
+        raise Exception.CreateFmt('HTTP 429: Rate limit exceeded. Response: %s', 
+          [Response.ContentAsString])
+      else
+        raise Exception.CreateFmt('HTTP %d: %s. Response: %s', 
+          [Response.StatusCode, Response.StatusText, Response.ContentAsString]);
+    finally
+      Stream.Free;
+    end;
+  finally
+    HttpClient.Free;
+  end;
+end;
+
+class function TPythiaAIClient.CallAnthropic(const RequestBody: string): string;
+var
+  HttpClient: THTTPClient;
+  Response: IHTTPResponse;
+  Stream: TStringStream;
+  APIKey: string;
+begin
+  APIKey := TPythiaConfig.GetAnthropicKey;
+  if APIKey = '' then
+    raise Exception.Create('Anthropic API key not configured. Please set it in Settings.');
+  
+  HttpClient := THTTPClient.Create;
+  try
+    HttpClient.ContentType := 'application/json';
+    HttpClient.CustomHeaders['x-api-key'] := APIKey;
+    HttpClient.CustomHeaders['anthropic-version'] := '2023-06-01';
+    
+    Stream := TStringStream.Create(RequestBody, TEncoding.UTF8);
+    try
+      Response := HttpClient.Post('https://api.anthropic.com/v1/messages', Stream);
+      
+      if Response.StatusCode = 200 then
+        Result := Response.ContentAsString
+      else
+        raise Exception.CreateFmt('API Error %d: %s', 
+          [Response.StatusCode, Response.StatusText]);
+    finally
+      Stream.Free;
+    end;
+  finally
+    HttpClient.Free;
+  end;
+end;
+
+class function TPythiaAIClient.ParseOpenAIResponse(const Response: string): string;
+var
+  JSON: TJSONObject;
+  Choices: TJSONArray;
+  Choice: TJSONObject;
+  Message: TJSONObject;
+begin
+  Result := '';
+  JSON := TJSONObject.ParseJSONValue(Response) as TJSONObject;
+  try
+    if Assigned(JSON) then
+    begin
+      Choices := JSON.GetValue('choices') as TJSONArray;
+      if Assigned(Choices) and (Choices.Count > 0) then
+      begin
+        Choice := Choices.Items[0] as TJSONObject;
+        Message := Choice.GetValue('message') as TJSONObject;
+        if Assigned(Message) then
+          Result := Message.GetValue('content').Value;
+      end;
+    end;
+  finally
+    JSON.Free;
+  end;
+end;
+
+class function TPythiaAIClient.ParseAnthropicResponse(const Response: string): string;
+var
+  JSON: TJSONObject;
+  Content: TJSONArray;
+  ContentItem: TJSONObject;
+begin
+  Result := '';
+  JSON := TJSONObject.ParseJSONValue(Response) as TJSONObject;
+  try
+    if Assigned(JSON) then
+    begin
+      Content := JSON.GetValue('content') as TJSONArray;
+      if Assigned(Content) and (Content.Count > 0) then
+      begin
+        ContentItem := Content.Items[0] as TJSONObject;
+        if Assigned(ContentItem) then
+          Result := ContentItem.GetValue('text').Value;
+      end;
+    end;
+  finally
+    JSON.Free;
+  end;
+end;
+
+end.

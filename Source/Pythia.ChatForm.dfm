@@ -24,6 +24,15 @@ object ChatWindow: TChatWindow
     ExplicitTop = 444
     ExplicitWidth = 600
   end
+  object SplitterContext: TSplitter
+    Left = 0
+    Top = 98
+    Width = 584
+    Height = 4
+    Cursor = crVSplit
+    Align = alTop
+    ExplicitTop = 91
+  end
   object PanelTop: TPanel
     Left = 0
     Top = 0
@@ -84,11 +93,66 @@ object ChatWindow: TChatWindow
     Align = alBottom
     BevelOuter = bvNone
     TabOrder = 1
-    object MemoInput: TMemo
+    object PanelContext: TPanel
       Left = 0
       Top = 0
       Width = 584
-      Height = 137
+      Height = 41
+      Align = alTop
+      BevelOuter = bvNone
+      TabOrder = 0
+      object LabelContext: TEdit
+        Left = 16
+        Top = 10
+        Width = 290
+        Height = 23
+        ReadOnly = True
+        TabOrder = 2
+        Text = 'Context: No file active'
+      end
+      object CheckAutoContext: TCheckBox
+        Left = 320
+        Top = 10
+        Width = 129
+        Height = 17
+        Caption = 'Auto-Context'
+        Checked = True
+        State = cbChecked
+        TabOrder = 0
+        OnClick = CheckAutoContextClick
+      end
+      object ButtonRefreshContext: TButton
+        Left = 464
+        Top = 6
+        Width = 105
+        Height = 25
+        Caption = 'Refresh Context'
+        TabOrder = 1
+        OnClick = ButtonRefreshContextClick
+      end
+    end
+    object MemoContextInfo: TMemo
+      Left = 0
+      Top = 41
+      Width = 584
+      Height = 80
+      Align = alTop
+      Color = cl3DLight
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
+      ReadOnly = True
+      ScrollBars = ssVertical
+      TabOrder = 1
+    end
+    object MemoInput: TMemo
+      Left = 0
+      Top = 91
+      Width = 584
+      Height = 46
       Align = alClient
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
@@ -97,9 +161,8 @@ object ChatWindow: TChatWindow
       Font.Style = []
       ParentFont = False
       ScrollBars = ssVertical
-      TabOrder = 0
+      TabOrder = 2
       OnKeyDown = MemoInputKeyDown
-      ExplicitHeight = 129
     end
     object ButtonSend: TButton
       Left = 488
@@ -110,10 +173,8 @@ object ChatWindow: TChatWindow
       Anchors = [akRight, akBottom]
       Caption = 'Send'
       Default = True
-      TabOrder = 1
+      TabOrder = 3
       OnClick = ButtonSendClick
-      ExplicitLeft = 504
-      ExplicitTop = 135
     end
   end
   object PanelChat: TPanel

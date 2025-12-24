@@ -75,6 +75,18 @@ if (-not $SkipBuild) {
         Write-Host "  Size: $sizeMB MB" -ForegroundColor Gray
     } else {
         Write-Host "  Build failed!" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "========== Compilation Errors (pythia.err) ==========" -ForegroundColor Red
+        if (Test-Path "pythia.err") {
+            Get-Content "pythia.err" | Select-String -Pattern "Error|Fatal" -Context 2,2
+            Write-Host ""
+            Write-Host "Full error log:" -ForegroundColor Yellow
+            Get-Content "pythia.err"
+        } else {
+            Write-Host "Error file not found. Build process may have failed to start." -ForegroundColor Red
+        }
+        Write-Host "========== End Compilation Errors ==========" -ForegroundColor Red
+        Write-Host ""
         exit 1
     }
 } else {

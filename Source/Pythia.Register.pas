@@ -156,6 +156,13 @@ begin
       for J := 0 to ToolsMenu.Count - 1 do
       begin
         LogLines.Add(Format('  [%d] "%s"', [J, ToolsMenu.Items[J].Caption]));
+        // Check if Pythia already in Tools menu
+        if Pos('Pythia', ToolsMenu.Items[J].Caption) > 0 then
+        begin
+          LogLines.Add('Found existing Pythia menu item at index ' + IntToStr(J));
+          LogLines.Add('SUCCESS: Menu already registered (found in Tools menu)');
+          goto SkipCreation;
+        end;
       end;
       LogLines.Add('');
       
@@ -200,7 +207,7 @@ begin
       MenuItemChat.Name := 'PythiaAIChatMenuItem';
       MenuItemChat.Caption := 'Pythia AI Chat...';
       MenuItemChat.Hint := 'Open AI-powered chat assistant';
-      MenuItemChat.ShortCut := TextToShortCut('Ctrl+Alt+P');
+      MenuItemChat.ShortCut := TextToShortCut('Ctrl+Shift+P');
       MenuItemChat.OnClick := MenuHandler.ShowChatWindow;
 
       //from https://docwiki.embarcadero.com/RADStudio/Athens/en/Adding_an_Item_to_the_Main_Menu_of_the_IDE

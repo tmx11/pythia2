@@ -23,10 +23,32 @@ For rapid development without IDE reinstallation:
 ### IDE Plugin Installation
 Once features are verified in standalone app:
 
-1. Open `pythia.dproj` (the package project)
-2. Build the package (Project > Build pythia)
-3. Run `install.ps1` to install into IDE
-4. Restart Delphi IDE
+#### Option 1: Clean Install (Recommended)
+Run the automated clean install script to remove old installations:
+```powershell
+.\clean-install.ps1
+```
+This will:
+- Stop Delphi IDE
+- Remove all old Pythia registry entries
+- Clean build the package to `Win32\Debug\pythia.bpl`
+- Install to IDE and restart Delphi
+
+#### Option 2: Manual Installation
+1. Close Delphi IDE completely
+2. Open `pythia.dproj` in Delphi 12
+3. Build the package: **Shift+F9** or **Project > Build pythia**
+4. BPL will be in: `Win32\Debug\pythia.bpl`
+5. Open **Component > Install Packages**
+6. Click **Add**, browse to `Win32\Debug\pythia.bpl`
+7. Click **OK** and restart Delphi
+
+**Access Pythia:**
+- Menu: **Tools > Pythia AI Chat...**
+- Keyboard: **Ctrl+Shift+P**
+
+**Troubleshooting Duplicates:**
+If you see duplicate menu items, run `.\clean-install.ps1` to completely remove old installations.
 
 **Both projects share the same Source/*.pas units** - changes automatically work in both!
 

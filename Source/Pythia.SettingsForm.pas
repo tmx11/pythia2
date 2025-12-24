@@ -129,7 +129,7 @@ begin
   
   if Token <> '' then
   begin
-    LabelGitHubStatus.Caption := 'Status: ✓ Authenticated';
+    LabelGitHubStatus.Caption := 'Status: Authenticated';
     LabelGitHubStatus.Font.Color := clGreen;
     LabelGitHubStatus.Font.Style := [fsBold];
     ButtonGitHubSignIn.Enabled := False;

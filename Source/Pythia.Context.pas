@@ -80,9 +80,7 @@ implementation
 uses
   System.IOUtils,
   System.Math,
-{$IFDEF DESIGNTIME}
   ToolsAPI,
-{$ENDIF}
   Xml.XMLIntf,
   Xml.XMLDoc;
 
@@ -296,8 +294,6 @@ end;
 
 { TIDEContextProvider }
 
-{$IFDEF DESIGNTIME}
-
 function TIDEContextProvider.GetCurrentFile: TContextItem;
 var
   ModuleServices: IOTAModuleServices;
@@ -385,8 +381,10 @@ begin
   Result.LineStart := Block.StartingRow;
   Result.LineEnd := Block.EndingRow;
   
-  StartPos := Block.StartingColumn;
-  EndPos := Block.EndingColumn;
+  StartPos.Line := Block.StartingRow;
+  StartPos.CharIndex := Block.StartingColumn;
+  EndPos.Line := Block.EndingRow;
+  EndPos.CharIndex := Block.EndingColumn;
   
   // Read selected text
   Reader := Editor.CreateReader;
@@ -439,31 +437,6 @@ function TIDEContextProvider.IsAvailable: Boolean;
 begin
   Result := Assigned(BorlandIDEServices);
 end;
-
-{$ELSE}
-
-// Stub implementations for non-IDE builds
-function TIDEContextProvider.GetCurrentFile: TContextItem;
-begin
-  Result := TContextItem.Create(ctCurrentFile, '', '');
-end;
-
-function TIDEContextProvider.GetSelection: TContextItem;
-begin
-  Result := TContextItem.Create(ctSelection, '', '');
-end;
-
-function TIDEContextProvider.GetProjectFiles: TArray<string>;
-begin
-  SetLength(Result, 0);
-end;
-
-function TIDEContextProvider.IsAvailable: Boolean;
-begin
-  Result := False;
-end;
-
-{$ENDIF}
 
 { TStandaloneContextProvider }
 

@@ -4,7 +4,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.JSON, System.Net.HttpClient,
-  System.Net.URLClient, Vcl.Dialogs, Vcl.Forms;
+  System.Net.URLClient, System.IniFiles, Vcl.Dialogs, Vcl.Forms;
 
 type
   TGitHubAuthStatus = (asNotAuthenticated, asAuthenticating, asAuthenticated, asError);

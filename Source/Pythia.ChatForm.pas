@@ -33,7 +33,7 @@ type
     SplitterContext: TSplitter;
     PanelContext: TPanel;
     CheckAutoContext: TCheckBox;
-    LabelContext: TLabel;
+    LabelContext: TEdit;
     ButtonRefreshContext: TButton;
     MemoContextInfo: TMemo;
     procedure FormCreate(Sender: TObject);
@@ -476,7 +476,7 @@ var
 begin
   if not Assigned(FContextProvider) then
   begin
-    LabelContext.Caption := 'Context: Provider not initialized';
+    LabelContext.Text := 'Context: Provider not initialized';
     Exit;
   end;
     
@@ -497,7 +497,7 @@ begin
     else
       StatusText := 'Context: No file active';
       
-    LabelContext.Caption := StatusText;
+    LabelContext.Text := StatusText;
     
     // Update detailed context info
     MemoContextInfo.Lines.Clear;
@@ -518,10 +518,10 @@ begin
       begin
         case Item.ItemType of
           ctCurrentFile:
-            MemoContextInfo.Lines.Add(Format('  📄 %s (%d tokens)', 
+            MemoContextInfo.Lines.Add(Format('  File: %s (%d tokens)', 
               [ExtractFileName(Item.FilePath), Item.TokenCount]));
           ctSelection:
-            MemoContextInfo.Lines.Add(Format('  ✂️ Selection: Lines %d-%d (%d tokens)', 
+            MemoContextInfo.Lines.Add(Format('  Selection: Lines %d-%d (%d tokens)', 
               [Item.LineStart, Item.LineEnd, Item.TokenCount]));
         end;
       end;
@@ -535,7 +535,7 @@ begin
   except
     on E: Exception do
     begin
-      LabelContext.Caption := 'Context: Error - ' + E.Message;
+      LabelContext.Text := 'Context: Error - ' + E.Message;
       MemoContextInfo.Lines.Clear;
       MemoContextInfo.Lines.Add('Error gathering context:');
       MemoContextInfo.Lines.Add(E.ClassName + ': ' + E.Message);

@@ -101,12 +101,14 @@ object ChatWindow: TChatWindow
       Align = alTop
       BevelOuter = bvNone
       TabOrder = 0
-      object LabelContext: TLabel
+      object LabelContext: TEdit
         Left = 16
-        Top = 12
-        Width = 130
-        Height = 15
-        Caption = 'Context: No file active'
+        Top = 10
+        Width = 290
+        Height = 23
+        ReadOnly = True
+        TabOrder = 2
+        Text = 'Context: No file active'
       end
       object CheckAutoContext: TCheckBox
         Left = 320
@@ -133,7 +135,7 @@ object ChatWindow: TChatWindow
       Left = 0
       Top = 41
       Width = 584
-      Height = 50
+      Height = 80
       Align = alTop
       Color = cl3DLight
       Font.Charset = DEFAULT_CHARSET

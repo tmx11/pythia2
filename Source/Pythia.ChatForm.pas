@@ -6,7 +6,8 @@ uses
   Winapi.Windows, Winapi.Messages,
   System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
-  Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls;
+  Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls,
+  Pythia.Context;
 
 type
   TChatMessage = record
@@ -29,6 +30,11 @@ type
     ButtonTestConnection: TButton;
     StatusBar: TStatusBar;
     SplitterInput: TSplitter;
+    PanelContext: TPanel;
+    CheckAutoContext: TCheckBox;
+    LabelContext: TLabel;
+    ButtonRefreshContext: TButton;
+    MemoContextInfo: TMemo;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure ButtonSendClick(Sender: TObject);
@@ -36,17 +42,26 @@ type
     procedure ButtonSettingsClick(Sender: TObject);
     procedure MemoInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ButtonTestConnectionClick(Sender: TObject);
+    procedure CheckAutoContextClick(Sender: TObject);
+    procedure ButtonRefreshContextClick(Sender: TObject);
   private
     FMessages: TArray<TChatMessage>;
     FIsProcessing: Boolean;
     FTotalTokensUsed: Integer;
     FRequestCount: Integer;
+    FContextProvider: IContextProvider;
+    FLastContext: TArray<TContextItem>;
+    FAutoContext: Boolean;
     procedure AddMessage(const ARole, AContent: string);
     procedure DisplayMessage(const AMessage: TChatMessage);
     procedure SendMessageToAI;
     procedure UpdateUI;
     procedure UpdateStatusBar;
     procedure TestConnection;
+    procedure InitializeContextProvider;
+    procedure UpdateContextDisplay;
+    function GatherContext: TArray<TContextItem>;
+    procedure DisplayContextReferences(const Context: TArray<TContextItem>);
   public
     { Public declarations }
   end;
@@ -75,7 +90,9 @@ begin
   FIsProcessing := False;
   FTotalTokensUsed := 0;
   FRequestCount := 0;
+  FAutoContext := True;
   SetLength(FMessages, 0);
+  SetLength(FLastContext, 0);
   
   // Configure chat display
   MemoChat.ReadOnly := True;
@@ -92,6 +109,16 @@ begin
   MemoInput.WordWrap := True;
   MemoInput.Height := 80;
   
+  // Configure context display
+  MemoContextInfo.ReadOnly := True;
+  MemoContextInfo.Color := cl3DLight;
+  MemoContextInfo.Font.Name := 'Segoe UI';
+  MemoContextInfo.Font.Size := 8;
+  MemoContextInfo.ScrollBars := ssVertical;
+  MemoContextInfo.WordWrap := True;
+  
+  CheckAutoContext.Checked := FAutoContext;
+  
   // Setup model selection
   ComboModel.Items.Clear;
   ComboModel.Items.Add('GitHub Copilot: GPT-4');
@@ -101,6 +128,10 @@ begin
   ComboModel.Items.Add('Claude 3.5 Sonnet');
   ComboModel.Items.Add('Claude 3 Opus');
   ComboModel.ItemIndex := 0;
+  
+  // Initialize context provider
+  InitializeContextProvider;
+  UpdateContextDisplay;
   
   StatusBar.SimpleText := 'Ready';
   
@@ -169,6 +200,8 @@ procedure TChatWindow.SendMessageToAI;
 var
   UserInput: string;
   Response: string;
+  Context: TArray<TContextItem>;
+  ContextStr: string;
 begin
   if FIsProcessing then
   begin
@@ -188,16 +221,38 @@ begin
   UpdateUI;
   
   try
+    StatusBar.SimpleText := 'Gathering context...';
+    Application.ProcessMessages;
+    
+    // Gather workspace context
+    Context := GatherContext;
+    
     StatusBar.SimpleText := 'Processing request...';
     Application.ProcessMessages;
     
-    // Send to AI service
-    Response := TPythiaAIClient.SendMessage(FMessages, ComboModel.Text);
+    // Format context for AI
+    if Length(Context) > 0 then
+    begin
+      ContextStr := (FContextProvider as TBaseContextProvider).FormatContextForAI(Context);
+      
+      // Prepend context to messages (as a temporary system-level context)
+      // Note: Will modify AI.Client to accept context parameter properly
+      Response := TPythiaAIClient.SendMessageWithContext(FMessages, ComboModel.Text, ContextStr);
+    end
+    else
+    begin
+      Response := TPythiaAIClient.SendMessage(FMessages, ComboModel.Text);
+    end;
     
     // Add AI response
     if Response <> '' then
     begin
       AddMessage('assistant', Response);
+      
+      // Display what context was used
+      if Length(Context) > 0 then
+        DisplayContextReferences(Context);
+      
       Inc(FRequestCount);
       // Estimate tokens (rough: 1 token ≈ 4 chars)
       Inc(FTotalTokensUsed, (Length(UserInput) + Length(Response)) div 4);
@@ -397,6 +452,132 @@ end;
 procedure TChatWindow.ButtonTestConnectionClick(Sender: TObject);
 begin
   TestConnection;
+end;
+
+procedure TChatWindow.InitializeContextProvider;
+begin
+  // Try IDE provider first, fall back to standalone
+  FContextProvider := TIDEContextProvider.Create;
+  if not FContextProvider.IsAvailable then
+  begin
+    // For standalone app, could pass project path from command line or settings
+    FContextProvider := TStandaloneContextProvider.Create('');
+  end;
+end;
+
+procedure TChatWindow.UpdateContextDisplay;
+var
+  Context: TArray<TContextItem>;
+  TotalTokens: Integer;
+  FileCount: Integer;
+  Item: TContextItem;
+  StatusText: string;
+begin
+  if not Assigned(FContextProvider) then
+    Exit;
+    
+  try
+    Context := (FContextProvider as TBaseContextProvider).GatherContext(False); // Don't include full project list for display
+    
+    TotalTokens := 0;
+    FileCount := 0;
+    for Item in Context do
+    begin
+      Inc(TotalTokens, Item.TokenCount);
+      if (Item.ItemType = ctCurrentFile) or (Item.ItemType = ctSelection) then
+        Inc(FileCount);
+    end;
+    
+    if FileCount > 0 then
+      StatusText := Format('Context: %d file(s), ~%d tokens', [FileCount, TotalTokens])
+    else
+      StatusText := 'Context: No file active';
+      
+    LabelContext.Caption := StatusText;
+    
+    // Update detailed context info
+    MemoContextInfo.Lines.Clear;
+    if Length(Context) > 0 then
+    begin
+      MemoContextInfo.Lines.Add('Available Context:');
+      for Item in Context do
+      begin
+        case Item.ItemType of
+          ctCurrentFile:
+            MemoContextInfo.Lines.Add(Format('  📄 %s (%d tokens)', 
+              [ExtractFileName(Item.FilePath), Item.TokenCount]));
+          ctSelection:
+            MemoContextInfo.Lines.Add(Format('  ✂️ Selection: Lines %d-%d (%d tokens)', 
+              [Item.LineStart, Item.LineEnd, Item.TokenCount]));
+        end;
+      end;
+    end
+    else
+    begin
+      MemoContextInfo.Lines.Add('No context available');
+      MemoContextInfo.Lines.Add('Open a file in the IDE to enable context');
+    end;
+  except
+    on E: Exception do
+      LabelContext.Caption := 'Context: Error - ' + E.Message;
+  end;
+end;
+
+function TChatWindow.GatherContext: TArray<TContextItem>;
+begin
+  if not FAutoContext or not Assigned(FContextProvider) then
+  begin
+    SetLength(Result, 0);
+    Exit;
+  end;
+  
+  Result := (FContextProvider as TBaseContextProvider).GatherContext(False);
+  FLastContext := Result;
+  
+  // Apply token limits
+  (FContextProvider as TBaseContextProvider).PrioritizeAndTruncate(Result, 6000); // Leave room for conversation
+end;
+
+procedure TChatWindow.DisplayContextReferences(const Context: TArray<TContextItem>);
+var
+  Item: TContextItem;
+  RefText: string;
+begin
+  if Length(Context) = 0 then
+    Exit;
+    
+  RefText := #13#10 + 'Used context:';
+  for Item in Context do
+  begin
+    case Item.ItemType of
+      ctCurrentFile:
+        RefText := RefText + #13#10 + Format('  📄 %s', [ExtractFileName(Item.FilePath)]);
+      ctSelection:
+        RefText := RefText + #13#10 + Format('  ✂️ %s (lines %d-%d)', 
+          [ExtractFileName(Item.FilePath), Item.LineStart, Item.LineEnd]);
+      ctProjectFile:
+        RefText := RefText + #13#10 + Format('  📁 %s', [ExtractFileName(Item.FilePath)]);
+    end;
+  end;
+  
+  // Add to chat display
+  MemoChat.SelAttributes.Style := [fsItalic];
+  MemoChat.SelAttributes.Color := clGray;
+  MemoChat.Lines.Add(RefText);
+  MemoChat.SelAttributes.Style := [];
+  MemoChat.SelAttributes.Color := clBlack;
+  MemoChat.Lines.Add('');
+end;
+
+procedure TChatWindow.CheckAutoContextClick(Sender: TObject);
+begin
+  FAutoContext := CheckAutoContext.Checked;
+  UpdateContextDisplay;
+end;
+
+procedure TChatWindow.ButtonRefreshContextClick(Sender: TObject);
+begin
+  UpdateContextDisplay;
 end;
 
 end.

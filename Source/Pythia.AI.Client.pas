@@ -23,6 +23,8 @@ type
   public
     class function SendMessage(const Messages: TArray<TChatMessage>; 
       const Model: string): string;
+    class function SendMessageWithContext(const Messages: TArray<TChatMessage>; 
+      const Model: string; const Context: string): string;
   end;
 
 implementation
@@ -78,6 +80,28 @@ begin
         Result := 'Error: ' + E.Message;
     end;
   end;
+end;
+
+class function TPythiaAIClient.SendMessageWithContext(const Messages: TArray<TChatMessage>;
+  const Model, Context: string): string;
+var
+  ContextMessages: TArray<TChatMessage>;
+  I: Integer;
+begin
+  // Inject context as a system-level message at the start
+  SetLength(ContextMessages, Length(Messages) + 1);
+  
+  // Add context as first message
+  ContextMessages[0].Role := 'system';
+  ContextMessages[0].Content := Context;
+  ContextMessages[0].Timestamp := Now;
+  
+  // Copy original messages
+  for I := 0 to High(Messages) do
+    ContextMessages[I + 1] := Messages[I];
+  
+  // Use regular SendMessage with augmented messages
+  Result := SendMessage(ContextMessages, Model);
 end;
 
 class function TPythiaAIClient.BuildOpenAIRequest(

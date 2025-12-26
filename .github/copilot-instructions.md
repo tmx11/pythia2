@@ -58,6 +58,13 @@ User types in MemoInput
 
 ## Delphi-Specific Patterns
 
+### CRITICAL RULES
+- **NO CONDITIONAL COMPILATION**: Never use `{$IFDEF}`, `{$IFNDEF}`, `{$DEFINE}`, or any conditional directives
+- **NO BRANCHING MACROS**: Code must be the same for all build targets (IDE plugin and standalone app)
+- **Runtime Detection Only**: Use `Assigned(BorlandIDEServices)` to detect IDE vs standalone at runtime
+- Both `pythia.dpk` (plugin) and `PythiaApp.dpr` (standalone) reference the **exact same source files** in `Source/`
+- Any changes must work for both projects without modification
+
 ### Unit Structure
 - Every file starts with `unit UnitName;` matching filename (e.g., `unit Pythia.Register;` in `Pythia.Register.pas`)
 - Standard sections: `interface` (public declarations) → `implementation` (code) → optional `initialization`/`finalization`

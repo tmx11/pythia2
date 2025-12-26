@@ -134,20 +134,22 @@ begin
     MsgObj.AddPair('role', 'system');
     MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
       'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
-      'When editing files, return ONLY the changed lines with precise line ranges. Use this JSON format:' + #13#10 +
+      'When editing files, use this JSON format to REPLACE specific line ranges:' + #13#10 +
       '```json' + #13#10 +
       '{' + #13#10 +
-      '  "edits": [' + #13#10 +
+      '  \"edits\": [' + #13#10 +
       '    {' + #13#10 +
-      '      "file": "Source/MyUnit.pas",' + #13#10 +
-      '      "startLine": 10,' + #13#10 +
-      '      "endLine": 15,' + #13#10 +
-      '      "newText": "  // Updated code\n  Result := True;"' + #13#10 +
+      '      \"file\": \"Source/MyUnit.pas\",' + #13#10 +
+      '      \"startLine\": 10,' + #13#10 +
+      '      \"endLine\": 12,' + #13#10 +
+      '      \"newText\": \"  // Comment\\n  Line11Code;\\n  Line12Code;\"' + #13#10 +
       '    }' + #13#10 +
       '  ]' + #13#10 +
       '}' + #13#10 +
       '```' + #13#10 +
-      'Lines are 1-indexed. Include only changed code, not entire file. Multiple edits allowed.');
+      'CRITICAL: Lines startLine through endLine are COMPLETELY REPLACED with newText. ' +
+      'If adding comments, you MUST include the original code + comment in newText. ' +
+      'Lines are 1-indexed. Multiple edits allowed.');
     MsgArray.AddElement(MsgObj);
     
     // Add conversation messages
@@ -189,20 +191,22 @@ begin
     JSON.AddPair('max_tokens', TJSONNumber.Create(4096));
     JSON.AddPair('system', 'You are Pythia, an expert Delphi programming assistant. ' +
       'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
-      'When editing files, return ONLY the changed lines with precise line ranges. Use this JSON format:' + #13#10 +
+      'When editing files, use this JSON format to REPLACE specific line ranges:' + #13#10 +
       '```json' + #13#10 +
       '{' + #13#10 +
       '  "edits": [' + #13#10 +
       '    {' + #13#10 +
       '      "file": "Source/MyUnit.pas",' + #13#10 +
       '      "startLine": 10,' + #13#10 +
-      '      "endLine": 15,' + #13#10 +
-      '      "newText": "  // Updated code\n  Result := True;"' + #13#10 +
+      '      "endLine": 12,' + #13#10 +
+      '      "newText": "  // Comment\n  Line11Code;\n  Line12Code;"' + #13#10 +
       '    }' + #13#10 +
       '  ]' + #13#10 +
       '}' + #13#10 +
       '```' + #13#10 +
-      'Lines are 1-indexed. Include only changed code, not entire file. Multiple edits allowed.');
+      'CRITICAL: Lines startLine through endLine are COMPLETELY REPLACED with newText. ' +
+      'If adding comments, you MUST include the original code + comment in newText. ' +
+      'Lines are 1-indexed. Multiple edits allowed.');
     
     MsgArray := TJSONArray.Create;
     
@@ -325,20 +329,22 @@ begin
     MsgObj.AddPair('role', 'system');
     MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
       'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
-      'When editing files, return ONLY the changed lines with precise line ranges. Use this JSON format:' + #13#10 +
+      'When editing files, use this JSON format to REPLACE specific line ranges:' + #13#10 +
       '```json' + #13#10 +
       '{' + #13#10 +
       '  "edits": [' + #13#10 +
       '    {' + #13#10 +
       '      "file": "Source/MyUnit.pas",' + #13#10 +
       '      "startLine": 10,' + #13#10 +
-      '      "endLine": 15,' + #13#10 +
-      '      "newText": "  // Updated code\n  Result := True;"' + #13#10 +
+      '      "endLine": 12,' + #13#10 +
+      '      "newText": "  // Comment\n  Line11Code;\n  Line12Code;"' + #13#10 +
       '    }' + #13#10 +
       '  ]' + #13#10 +
       '}' + #13#10 +
       '```' + #13#10 +
-      'Lines are 1-indexed. Include only changed code, not entire file. Multiple edits allowed.');
+      'CRITICAL: Lines startLine through endLine are COMPLETELY REPLACED with newText. ' +
+      'If adding comments, you MUST include the original code + comment in newText. ' +
+      'Lines are 1-indexed. Multiple edits allowed.');
     MsgArray.AddElement(MsgObj);
     
     // Add conversation messages

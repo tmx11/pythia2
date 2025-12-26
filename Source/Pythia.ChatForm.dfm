@@ -5,9 +5,6 @@ object ChatWindow: TChatWindow
   ClientHeight = 661
   ClientWidth = 584
   Color = clBtnFace
-  DockSite = True
-  DragKind = dkDock
-  DragMode = dmAutomatic
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -12
@@ -41,27 +38,27 @@ object ChatWindow: TChatWindow
     Left = 0
     Top = 0
     Width = 584
-    Height = 57
+    Height = 75
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
     object LabelModel: TLabel
       Left = 16
-      Top = 14
+      Top = 13
       Width = 36
       Height = 15
       Caption = 'Model:'
     end
     object LabelMode: TLabel
       Left = 16
-      Top = 35
+      Top = 44
       Width = 35
       Height = 15
       Caption = 'Mode:'
     end
     object ComboModel: TComboBox
       Left = 64
-      Top = 11
+      Top = 10
       Width = 217
       Height = 23
       Style = csDropDownList
@@ -70,7 +67,7 @@ object ChatWindow: TChatWindow
     end
     object ComboMode: TComboBox
       Left = 64
-      Top = 32
+      Top = 41
       Width = 100
       Height = 23
       Style = csDropDownList
@@ -81,23 +78,23 @@ object ChatWindow: TChatWindow
     object ButtonSettings: TButton
       Left = 296
       Top = 10
-      Width = 89
+      Width = 85
       Height = 25
       Caption = 'Settings...'
       TabOrder = 2
       OnClick = ButtonSettingsClick
     end
     object ButtonTestConnection: TButton
-      Left = 400
+      Left = 391
       Top = 10
-      Width = 105
+      Width = 110
       Height = 25
       Caption = 'Test Connection'
       TabOrder = 3
       OnClick = ButtonTestConnectionClick
     end
     object ButtonClear: TButton
-      Left = 515
+      Left = 511
       Top = 10
       Width = 60
       Height = 25
@@ -125,47 +122,47 @@ object ChatWindow: TChatWindow
       object LabelCurrentFile: TLabel
         Left = 16
         Top = 13
-        Width = 58
+        Width = 63
         Height = 15
         Caption = 'Current File:'
       end
       object LabelContext: TEdit
         Left = 320
         Top = 10
-        Width = 249
+        Width = 132
         Height = 23
         ReadOnly = True
-        TabOrder = 2
+        TabOrder = 1
         Text = 'Context: No file active'
       end
       object EditCurrentFile: TEdit
-        Left = 80
+        Left = 88
         Top = 10
-        Width = 225
+        Width = 217
         Height = 23
-        TabOrder = 3
+        TabOrder = 0
         Text = ''
         OnChange = EditCurrentFileChange
       end
       object CheckAutoContext: TCheckBox
         Left = 320
-        Top = 10
+        Top = 11
         Width = 129
         Height = 17
         Caption = 'Auto-Context'
         Checked = True
         State = cbChecked
-        TabOrder = 0
+        TabOrder = 2
         Visible = False
         OnClick = CheckAutoContextClick
       end
       object ButtonRefreshContext: TButton
-        Left = 464
-        Top = 6
-        Width = 105
+        Left = 462
+        Top = 8
+        Width = 110
         Height = 25
         Caption = 'Refresh Context'
-        TabOrder = 1
+        TabOrder = 3
         OnClick = ButtonRefreshContextClick
       end
     end

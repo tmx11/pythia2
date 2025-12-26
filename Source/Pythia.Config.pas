@@ -2,7 +2,11 @@
 unit Pythia.Config;
 interface
 
-uses
+  // System.SysUtils: Basic system utilities (strings, exceptions, etc.)
+  // System.Classes: Base classes like TIniFile
+  // System.IniFiles: INI file reading/writing
+  // System.IOUtils: File and directory utilities
+Uses
   System.SysUtils, System.Classes, System.IniFiles, System.IOUtils;
 
 type

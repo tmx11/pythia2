@@ -36,6 +36,8 @@ type
     LabelContext: TEdit;
     ButtonRefreshContext: TButton;
     MemoContextInfo: TMemo;
+    EditCurrentFile: TEdit;
+    LabelCurrentFile: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure ButtonSendClick(Sender: TObject);
@@ -45,6 +47,7 @@ type
     procedure ButtonTestConnectionClick(Sender: TObject);
     procedure CheckAutoContextClick(Sender: TObject);
     procedure ButtonRefreshContextClick(Sender: TObject);
+    procedure EditCurrentFileChange(Sender: TObject);
   private
     FMessages: TArray<TChatMessage>;
     FIsProcessing: Boolean;
@@ -132,6 +135,24 @@ begin
   
   // Initialize context provider
   InitializeContextProvider;
+  
+  // Update file context UI based on provider type
+  if FContextProvider.IsAvailable and (FContextProvider is TIDEContextProvider) then
+  begin
+    // IDE mode: file is auto-populated, make readonly
+    EditCurrentFile.ReadOnly := True;
+    EditCurrentFile.Color := cl3DLight;
+    EditCurrentFile.Text := '(auto from IDE)';
+  end
+  else
+  begin
+    // Standalone mode: user can type filename
+    EditCurrentFile.ReadOnly := False;
+    EditCurrentFile.Color := clWindow;
+    EditCurrentFile.Text := '';
+    EditCurrentFile.TextHint := 'Enter full file path...';
+  end;
+  
   UpdateContextDisplay;
   
   StatusBar.SimpleText := 'Ready';
@@ -518,8 +539,13 @@ begin
       begin
         case Item.ItemType of
           ctCurrentFile:
+          begin
             MemoContextInfo.Lines.Add(Format('  File: %s (%d tokens)', 
               [ExtractFileName(Item.FilePath), Item.TokenCount]));
+            // Update EditCurrentFile in IDE mode
+            if (FContextProvider is TIDEContextProvider) and EditCurrentFile.ReadOnly then
+              EditCurrentFile.Text := Item.FilePath;
+          end;
           ctSelection:
             MemoContextInfo.Lines.Add(Format('  Selection: Lines %d-%d (%d tokens)', 
               [Item.LineStart, Item.LineEnd, Item.TokenCount]));
@@ -598,6 +624,18 @@ end;
 procedure TChatWindow.ButtonRefreshContextClick(Sender: TObject);
 begin
   UpdateContextDisplay;
+end;
+
+procedure TChatWindow.EditCurrentFileChange(Sender: TObject);
+begin
+  // In standalone mode, user typing a file path - we could validate or auto-refresh
+  // For now, just let them type - context will be used when they send a message
+  if not EditCurrentFile.ReadOnly then
+  begin
+    // Standalone mode - user is manually entering file path
+    // Update context display to show manual entry mode
+    LabelContext.Text := 'Context: Manual file entry (standalone mode)';
+  end;
 end;
 
 end.

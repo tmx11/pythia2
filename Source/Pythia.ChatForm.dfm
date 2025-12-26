@@ -101,14 +101,30 @@ object ChatWindow: TChatWindow
       Align = alTop
       BevelOuter = bvNone
       TabOrder = 0
-      object LabelContext: TEdit
+      object LabelCurrentFile: TLabel
         Left = 16
+        Top = 13
+        Width = 58
+        Height = 15
+        Caption = 'Current File:'
+      end
+      object LabelContext: TEdit
+        Left = 320
         Top = 10
-        Width = 290
+        Width = 249
         Height = 23
         ReadOnly = True
         TabOrder = 2
         Text = 'Context: No file active'
+      end
+      object EditCurrentFile: TEdit
+        Left = 80
+        Top = 10
+        Width = 225
+        Height = 23
+        TabOrder = 3
+        Text = ''
+        OnChange = EditCurrentFileChange
       end
       object CheckAutoContext: TCheckBox
         Left = 320
@@ -119,6 +135,7 @@ object ChatWindow: TChatWindow
         Checked = True
         State = cbChecked
         TabOrder = 0
+        Visible = False
         OnClick = CheckAutoContextClick
       end
       object ButtonRefreshContext: TButton
@@ -128,6 +145,7 @@ object ChatWindow: TChatWindow
         Height = 25
         Caption = 'Refresh Context'
         TabOrder = 1
+        Visible = False
         OnClick = ButtonRefreshContextClick
       end
     end

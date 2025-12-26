@@ -145,7 +145,6 @@ object ChatWindow: TChatWindow
         Height = 25
         Caption = 'Refresh Context'
         TabOrder = 1
-        Visible = False
         OnClick = ButtonRefreshContextClick
       end
     end

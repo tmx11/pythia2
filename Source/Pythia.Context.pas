@@ -1,11 +1,12 @@
-unit Pythia.Context;
+﻿unit Pythia.Context;
 
 interface
 
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  ToolsAPI;
 
 type
   TContextItemType = (
@@ -96,7 +97,6 @@ implementation
 uses
   System.IOUtils,
   System.Math,
-  ToolsAPI,
   Xml.XMLIntf,
   Xml.XMLDoc;
 

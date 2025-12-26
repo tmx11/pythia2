@@ -134,11 +134,20 @@ begin
     MsgObj.AddPair('role', 'system');
     MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
       'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
-      'When asked to edit a file directly, use this format:' + #13#10 +
-      'EDIT_FILE: filepath' + #13#10 +
-      'file content here' + #13#10 +
-      'END_EDIT' + #13#10 +
-      'This will directly edit the file in the IDE. Use the exact filepath provided in the context.');
+      'When editing files, return ONLY the changed lines with precise line ranges. Use this JSON format:' + #13#10 +
+      '```json' + #13#10 +
+      '{' + #13#10 +
+      '  "edits": [' + #13#10 +
+      '    {' + #13#10 +
+      '      "file": "Source/MyUnit.pas",' + #13#10 +
+      '      "startLine": 10,' + #13#10 +
+      '      "endLine": 15,' + #13#10 +
+      '      "newText": "  // Updated code\n  Result := True;"' + #13#10 +
+      '    }' + #13#10 +
+      '  ]' + #13#10 +
+      '}' + #13#10 +
+      '```' + #13#10 +
+      'Lines are 1-indexed. Include only changed code, not entire file. Multiple edits allowed.');
     MsgArray.AddElement(MsgObj);
     
     // Add conversation messages
@@ -180,11 +189,20 @@ begin
     JSON.AddPair('max_tokens', TJSONNumber.Create(4096));
     JSON.AddPair('system', 'You are Pythia, an expert Delphi programming assistant. ' +
       'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
-      'When asked to edit a file directly, use this format:' + #13#10 +
-      'EDIT_FILE: filepath' + #13#10 +
-      'file content here' + #13#10 +
-      'END_EDIT' + #13#10 +
-      'This will directly edit the file in the IDE. Use the exact filepath provided in the context.');
+      'When editing files, return ONLY the changed lines with precise line ranges. Use this JSON format:' + #13#10 +
+      '```json' + #13#10 +
+      '{' + #13#10 +
+      '  "edits": [' + #13#10 +
+      '    {' + #13#10 +
+      '      "file": "Source/MyUnit.pas",' + #13#10 +
+      '      "startLine": 10,' + #13#10 +
+      '      "endLine": 15,' + #13#10 +
+      '      "newText": "  // Updated code\n  Result := True;"' + #13#10 +
+      '    }' + #13#10 +
+      '  ]' + #13#10 +
+      '}' + #13#10 +
+      '```' + #13#10 +
+      'Lines are 1-indexed. Include only changed code, not entire file. Multiple edits allowed.');
     
     MsgArray := TJSONArray.Create;
     
@@ -307,11 +325,20 @@ begin
     MsgObj.AddPair('role', 'system');
     MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
       'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
-      'When asked to edit a file directly, use this format:' + #13#10 +
-      'EDIT_FILE: filepath' + #13#10 +
-      'file content here' + #13#10 +
-      'END_EDIT' + #13#10 +
-      'This will directly edit the file in the IDE. Use the exact filepath provided in the context.');
+      'When editing files, return ONLY the changed lines with precise line ranges. Use this JSON format:' + #13#10 +
+      '```json' + #13#10 +
+      '{' + #13#10 +
+      '  "edits": [' + #13#10 +
+      '    {' + #13#10 +
+      '      "file": "Source/MyUnit.pas",' + #13#10 +
+      '      "startLine": 10,' + #13#10 +
+      '      "endLine": 15,' + #13#10 +
+      '      "newText": "  // Updated code\n  Result := True;"' + #13#10 +
+      '    }' + #13#10 +
+      '  ]' + #13#10 +
+      '}' + #13#10 +
+      '```' + #13#10 +
+      'Lines are 1-indexed. Include only changed code, not entire file. Multiple edits allowed.');
     MsgArray.AddElement(MsgObj);
     
     // Add conversation messages

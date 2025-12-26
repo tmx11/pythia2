@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages,
-  System.SysUtils, System.Variants, System.Classes,
+  System.SysUtils, System.Variants, System.Classes, System.JSON,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
   Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls,
   Pythia.Context;
@@ -646,73 +646,100 @@ end;
 
 procedure TChatWindow.ParseAndExecuteFileEdits(const AIResponse: string; var CleanResponse: string);
 var
-  Lines: TStringList;
-  I, J: Integer;
-  Line, FileName, Action: string;
-  InCommand: Boolean;
-  CommandLines: TStringList;
-  Content: string;
+  JSONStart, JSONEnd: Integer;
+  JSONText: string;
+  JSONObj, EditObj: TJSONObject;
+  EditsArray: TJSONArray;
+  EditsValue: TJSONValue;
+  I: Integer;
+  FileName, NewText: string;
+  StartLine, EndLine: Integer;
   Success: Boolean;
-  StartLine, EndLine, Col: Integer;
+  EditSummary: string;
+  FileValue, StartLineValue, EndLineValue, NewTextValue: TJSONValue;
 begin
   CleanResponse := AIResponse;
-  Lines := TStringList.Create;
-  CommandLines := TStringList.Create;
-  try
-    Lines.Text := AIResponse;
-    InCommand := False;
-    I := 0;
+  
+  // Look for JSON code block with edits
+  JSONStart := Pos('```json', LowerCase(AIResponse));
+  if JSONStart = 0 then
+    Exit; // No JSON edits found
     
-    while I < Lines.Count do
-    begin
-      Line := Trim(Lines[I]);
+  JSONStart := JSONStart + 7; // Skip ```json
+  JSONEnd := PosEx('```', AIResponse, JSONStart);
+  if JSONEnd = 0 then
+    Exit;
+    
+  JSONText := Copy(AIResponse, JSONStart, JSONEnd - JSONStart);
+  JSONText := Trim(JSONText);
+  
+  try
+    JSONObj := TJSONObject.ParseJSONValue(JSONText) as TJSONObject;
+    if JSONObj = nil then
+      Exit;
       
-      // Look for file edit command markers
-      if StartsText('EDIT_FILE:', Line) then
-      begin
-        InCommand := True;
-        CommandLines.Clear;
-        FileName := Copy(Line, Length('EDIT_FILE:') + 1, MaxInt);
-        FileName := Trim(FileName);
-        Inc(I);
-        Continue;
-      end;
+    try
+      EditsValue := JSONObj.GetValue('edits');
+      if (EditsValue = nil) or not (EditsValue is TJSONArray) then
+        Exit;
+        
+      EditsArray := EditsValue as TJSONArray;
+      EditSummary := '';
       
-      if InCommand then
+      // Process each edit
+      for I := 0 to EditsArray.Count - 1 do
       begin
-        if Line = 'END_EDIT' then
+        if not (EditsArray.Items[I] is TJSONObject) then
+          Continue;
+          
+        EditObj := EditsArray.Items[I] as TJSONObject;
+        
+        // Extract values
+        FileValue := EditObj.GetValue('file');
+        StartLineValue := EditObj.GetValue('startLine');
+        EndLineValue := EditObj.GetValue('endLine');
+        NewTextValue := EditObj.GetValue('newText');
+        
+        if (FileValue = nil) or (StartLineValue = nil) or 
+           (EndLineValue = nil) or (NewTextValue = nil) then
+          Continue;
+        
+        FileName := FileValue.Value;
+        StartLine := StrToIntDef(StartLineValue.Value, 0);
+        EndLine := StrToIntDef(EndLineValue.Value, 0);
+        NewText := NewTextValue.Value;
+        
+        // Execute the edit using ReplaceLines
+        Success := FContextProvider.ReplaceLines(FileName, StartLine, EndLine, NewText);
+        
+        if Success then
         begin
-          // Execute the edit command
-          Content := CommandLines.Text;
-          
-          if FileName <> '' then
-          begin
-            Success := FContextProvider.ReplaceFileContent(FileName, Content);
-            if Success then
-            begin
-              // Remove the command from clean response
-              CleanResponse := StringReplace(CleanResponse, 
-                'EDIT_FILE:' + FileName, 
-                '✓ File updated: ' + ExtractFileName(FileName), 
-                [rfIgnoreCase]);
-              CleanResponse := StringReplace(CleanResponse, 'END_EDIT', '', [rfIgnoreCase]);
-            end;
-          end;
-          
-          InCommand := False;
-          CommandLines.Clear;
+          EditSummary := EditSummary + Format('✓ Updated %s (lines %d-%d)' + #13#10, 
+            [ExtractFileName(FileName), StartLine, EndLine]);
         end
         else
         begin
-          CommandLines.Add(Lines[I]);
+          EditSummary := EditSummary + Format('✗ Failed to update %s' + #13#10, 
+            [ExtractFileName(FileName)]);
         end;
       end;
       
-      Inc(I);
+      // Replace JSON block with summary
+      if EditSummary <> '' then
+      begin
+        CleanResponse := StringReplace(CleanResponse, 
+          Copy(AIResponse, JSONStart - 7, JSONEnd - JSONStart + 7 + 3),
+          #13#10 + '**File Edits Applied:**' + #13#10 + EditSummary,
+          []);
+      end;
+      
+    finally
+      JSONObj.Free;
     end;
-  finally
-    Lines.Free;
-    CommandLines.Free;
+  except
+    on E: Exception do
+      // Silent fail - just show original response if JSON parsing fails
+      Exit;
   end;
 end;
 

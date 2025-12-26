@@ -75,7 +75,7 @@ end;
 procedure TPythiaMenuHandler.ShowChatWindow(Sender: TObject);
 begin
   if not Assigned(ChatWindow) then
-    ChatWindow := TChatWindow.Create(nil);
+    ChatWindow := TChatWindow.Create(Application);
   
   ChatWindow.Show;
 end;

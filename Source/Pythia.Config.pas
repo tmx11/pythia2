@@ -1,5 +1,5 @@
+// Edited by Pythia on 2024-06-12
 unit Pythia.Config;
-
 interface
 
 uses

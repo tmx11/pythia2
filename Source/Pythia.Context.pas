@@ -468,11 +468,13 @@ begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
     Exit;
 
-  // Find the open module for this file
+  // Find the open module for this file (match by full path or just filename)
   Module := nil;
   for I := 0 to ModuleServices.ModuleCount - 1 do
   begin
-    if SameText(ModuleServices.Modules[I].FileName, FileName) then
+    if SameText(ModuleServices.Modules[I].FileName, FileName) or
+       SameText(ExtractFileName(ModuleServices.Modules[I].FileName), FileName) or
+       SameText(ExtractFileName(ModuleServices.Modules[I].FileName), ExtractFileName(FileName)) then
     begin
       Module := ModuleServices.Modules[I];
       Break;
@@ -516,11 +518,13 @@ begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
     Exit;
 
-  // Find the open module for this file
+  // Find the open module for this file (match by full path or just filename)
   Module := nil;
   for I := 0 to ModuleServices.ModuleCount - 1 do
   begin
-    if SameText(ModuleServices.Modules[I].FileName, FileName) then
+    if SameText(ModuleServices.Modules[I].FileName, FileName) or
+       SameText(ExtractFileName(ModuleServices.Modules[I].FileName), FileName) or
+       SameText(ExtractFileName(ModuleServices.Modules[I].FileName), ExtractFileName(FileName)) then
     begin
       Module := ModuleServices.Modules[I];
       Break;
@@ -573,11 +577,13 @@ begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
     Exit;
 
-  // Find the open module for this file
+  // Find the open module for this file (match by full path or just filename)
   Module := nil;
   for I := 0 to ModuleServices.ModuleCount - 1 do
   begin
-    if SameText(ModuleServices.Modules[I].FileName, FileName) then
+    if SameText(ModuleServices.Modules[I].FileName, FileName) or
+       SameText(ExtractFileName(ModuleServices.Modules[I].FileName), FileName) or
+       SameText(ExtractFileName(ModuleServices.Modules[I].FileName), ExtractFileName(FileName)) then
     begin
       Module := ModuleServices.Modules[I];
       Break;
@@ -617,6 +623,7 @@ begin
   except
     Result := False;
   end;
+  // Writer is automatically freed by the IDE (interface reference counting)
 end;
 
 { TStandaloneContextProvider }

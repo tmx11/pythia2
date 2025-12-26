@@ -5,12 +5,16 @@ object ChatWindow: TChatWindow
   ClientHeight = 661
   ClientWidth = 584
   Color = clBtnFace
+  DockSite = True
+  DragKind = dkDock
+  DragMode = dmAutomatic
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -12
   Font.Name = 'Segoe UI'
   Font.Style = []
   Position = poScreenCenter
+  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   TextHeight = 15
@@ -48,6 +52,13 @@ object ChatWindow: TChatWindow
       Height = 15
       Caption = 'Model:'
     end
+    object LabelMode: TLabel
+      Left = 16
+      Top = 35
+      Width = 35
+      Height = 15
+      Caption = 'Mode:'
+    end
     object ComboModel: TComboBox
       Left = 64
       Top = 11
@@ -57,13 +68,23 @@ object ChatWindow: TChatWindow
       TabOrder = 0
       Text = 'ComboModel'
     end
+    object ComboMode: TComboBox
+      Left = 64
+      Top = 32
+      Width = 100
+      Height = 23
+      Style = csDropDownList
+      TabOrder = 1
+      Text = 'ComboMode'
+      OnChange = ComboModeChange
+    end
     object ButtonSettings: TButton
       Left = 296
       Top = 10
       Width = 89
       Height = 25
       Caption = 'Settings...'
-      TabOrder = 1
+      TabOrder = 2
       OnClick = ButtonSettingsClick
     end
     object ButtonTestConnection: TButton
@@ -72,7 +93,7 @@ object ChatWindow: TChatWindow
       Width = 105
       Height = 25
       Caption = 'Test Connection'
-      TabOrder = 2
+      TabOrder = 3
       OnClick = ButtonTestConnectionClick
     end
     object ButtonClear: TButton
@@ -81,7 +102,7 @@ object ChatWindow: TChatWindow
       Width = 60
       Height = 25
       Caption = 'Clear'
-      TabOrder = 3
+      TabOrder = 4
       OnClick = ButtonClearClick
     end
   end

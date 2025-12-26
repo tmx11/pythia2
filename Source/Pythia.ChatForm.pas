@@ -26,6 +26,8 @@ type
     ButtonClear: TButton;
     ComboModel: TComboBox;
     LabelModel: TLabel;
+    ComboMode: TComboBox;
+    LabelMode: TLabel;
     ButtonSettings: TButton;
     ButtonTestConnection: TButton;
     StatusBar: TStatusBar;
@@ -40,6 +42,7 @@ type
     LabelCurrentFile: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure ButtonSendClick(Sender: TObject);
     procedure ButtonClearClick(Sender: TObject);
     procedure ButtonSettingsClick(Sender: TObject);
@@ -48,6 +51,7 @@ type
     procedure CheckAutoContextClick(Sender: TObject);
     procedure ButtonRefreshContextClick(Sender: TObject);
     procedure EditCurrentFileChange(Sender: TObject);
+    procedure ComboModeChange(Sender: TObject);
   private
     FMessages: TArray<TChatMessage>;
     FIsProcessing: Boolean;
@@ -56,6 +60,7 @@ type
     FContextProvider: IContextProvider;
     FLastContext: TArray<TContextItem>;
     FAutoContext: Boolean;
+    FAgentMode: Boolean;
     procedure AddMessage(const ARole, AContent: string);
     procedure DisplayMessage(const AMessage: TChatMessage);
     procedure SendMessageToAI;
@@ -97,6 +102,7 @@ begin
   FTotalTokensUsed := 0;
   FRequestCount := 0;
   FAutoContext := True;
+  FAgentMode := True;  // Default to Agent mode
   SetLength(FMessages, 0);
   SetLength(FLastContext, 0);
   
@@ -135,6 +141,12 @@ begin
   ComboModel.Items.Add('Claude 3 Opus');
   ComboModel.ItemIndex := 0;
   
+  // Setup mode selection
+  ComboMode.Items.Clear;
+  ComboMode.Items.Add('Agent');
+  ComboMode.Items.Add('Ask');
+  ComboMode.ItemIndex := 0; // Default to Agent mode
+  
   // Initialize context provider
   InitializeContextProvider;
   
@@ -166,6 +178,32 @@ end;
 procedure TChatWindow.FormDestroy(Sender: TObject);
 begin
   SetLength(FMessages, 0);
+end;
+
+procedure TChatWindow.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  // Check if we're in the middle of processing an AI request
+  if FIsProcessing then
+  begin
+    ShowMessage('Please wait for the current AI request to complete before closing.');
+    CanClose := False;
+    Exit;
+  end;
+  
+  // Allow close
+  CanClose := True;
+end;
+
+procedure TChatWindow.ComboModeChange(Sender: TObject);
+begin
+  // Update agent mode flag based on dropdown selection
+  FAgentMode := (ComboMode.ItemIndex = 0); // Agent mode is index 0
+  
+  // Visual feedback
+  if FAgentMode then
+    StatusBar.SimpleText := 'Mode: Agent (can edit files)'
+  else
+    StatusBar.SimpleText := 'Mode: Ask (read-only)';
 end;
 
 procedure TChatWindow.AddMessage(const ARole, AContent: string);
@@ -709,18 +747,28 @@ begin
         EndLine := StrToIntDef(EndLineValue.Value, 0);
         NewText := NewTextValue.Value;
         
-        // Execute the edit using ReplaceLines
-        Success := FContextProvider.ReplaceLines(FileName, StartLine, EndLine, NewText);
-        
-        if Success then
+        // Check mode before executing edit
+        if FAgentMode then
         begin
-          EditSummary := EditSummary + Format('✓ Updated %s (lines %d-%d)' + #13#10, 
-            [ExtractFileName(FileName), StartLine, EndLine]);
+          // Agent mode: execute the edit
+          Success := FContextProvider.ReplaceLines(FileName, StartLine, EndLine, NewText);
+          
+          if Success then
+          begin
+            EditSummary := EditSummary + Format('✓ Updated %s (lines %d-%d)' + #13#10, 
+              [ExtractFileName(FileName), StartLine, EndLine]);
+          end
+          else
+          begin
+            EditSummary := EditSummary + Format('✗ Failed to update %s' + #13#10, 
+              [ExtractFileName(FileName)]);
+          end;
         end
         else
         begin
-          EditSummary := EditSummary + Format('✗ Failed to update %s' + #13#10, 
-            [ExtractFileName(FileName)]);
+          // Ask mode: show what would be done (read-only)
+          EditSummary := EditSummary + Format('ℹ Would update %s (lines %d-%d) [Read-only mode]' + #13#10, 
+            [ExtractFileName(FileName), StartLine, EndLine]);
         end;
       end;
       

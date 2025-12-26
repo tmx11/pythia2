@@ -197,16 +197,16 @@ begin
       '  "edits": [' + #13#10 +
       '    {' + #13#10 +
       '      "file": "Source/MyUnit.pas",' + #13#10 +
-      '      "startLine": 10,' + #13#10 +
-      '      "endLine": 12,' + #13#10 +
-      '      "newText": "  // Comment\n  Line11Code;\n  Line12Code;"' + #13#10 +
+      '      "startLine": 1,' + #13#10 +
+      '      "endLine": 1,' + #13#10 +
+      '      "newText": "// Header comment\nunit MyUnit;"' + #13#10 +
       '    }' + #13#10 +
       '  ]' + #13#10 +
       '}' + #13#10 +
       '```' + #13#10 +
       'CRITICAL: Lines startLine through endLine are COMPLETELY REPLACED with newText. ' +
-      'If adding comments, you MUST include the original code + comment in newText. ' +
-      'Lines are 1-indexed. Multiple edits allowed.');
+      'Never duplicate lines - if line 1 is \"unit X;\", your newText should contain it ONCE. ' +
+      'If adding comments, include original code + comment in newText. Lines are 1-indexed.');
     
     MsgArray := TJSONArray.Create;
     
@@ -335,16 +335,16 @@ begin
       '  "edits": [' + #13#10 +
       '    {' + #13#10 +
       '      "file": "Source/MyUnit.pas",' + #13#10 +
-      '      "startLine": 10,' + #13#10 +
-      '      "endLine": 12,' + #13#10 +
-      '      "newText": "  // Comment\n  Line11Code;\n  Line12Code;"' + #13#10 +
+      '      "startLine": 1,' + #13#10 +
+      '      "endLine": 1,' + #13#10 +
+      '      "newText": "// Header comment\\nunit MyUnit;"' + #13#10 +
       '    }' + #13#10 +
       '  ]' + #13#10 +
       '}' + #13#10 +
       '```' + #13#10 +
       'CRITICAL: Lines startLine through endLine are COMPLETELY REPLACED with newText. ' +
-      'If adding comments, you MUST include the original code + comment in newText. ' +
-      'Lines are 1-indexed. Multiple edits allowed.');
+      'Never duplicate lines - if line 1 is \"unit X;\", your newText should contain it ONCE. ' +
+      'If adding comments, include original code + comment in newText. Lines are 1-indexed.');
     MsgArray.AddElement(MsgObj);
     
     // Add conversation messages

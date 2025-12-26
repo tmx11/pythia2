@@ -73,9 +73,32 @@ begin
 end;
 
 procedure TPythiaMenuHandler.ShowChatWindow(Sender: TObject);
+var
+  NTAServices: INTAServices;
+  EditorForm: TCustomForm;
 begin
   if not Assigned(ChatWindow) then
+  begin
     ChatWindow := TChatWindow.Create(Application);
+    
+    // Try to dock to bottom of editor on first show
+    if Supports(BorlandIDEServices, INTAServices, NTAServices) then
+    begin
+      // Get the main editor form (usually the first form)
+      if Screen.FormCount > 0 then
+      begin
+        EditorForm := Screen.Forms[0] as TCustomForm;
+        if Assigned(EditorForm) then
+        begin
+          // Position at bottom of screen with reasonable height
+          ChatWindow.Top := EditorForm.Top + EditorForm.Height - 300;
+          ChatWindow.Left := EditorForm.Left;
+          ChatWindow.Width := EditorForm.Width;
+          ChatWindow.Height := 300;
+        end;
+      end;
+    end;
+  end;
   
   ChatWindow.Show;
 end;

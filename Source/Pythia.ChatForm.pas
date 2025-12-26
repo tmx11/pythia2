@@ -66,6 +66,7 @@ type
     procedure UpdateContextDisplay;
     function GatherContext: TArray<TContextItem>;
     procedure DisplayContextReferences(const Context: TArray<TContextItem>);
+    procedure ParseAndExecuteFileEdits(const AIResponse: string; var CleanResponse: string);
   public
     { Public declarations }
   end;
@@ -77,6 +78,7 @@ implementation
 
 uses
   System.DateUtils,
+  System.StrUtils,
   Pythia.AI.Client,
   Pythia.Config,
   Pythia.GitHub.Auth,
@@ -269,7 +271,11 @@ begin
     // Add AI response
     if Response <> '' then
     begin
-      AddMessage('assistant', Response);
+      // Parse and execute any file editing commands
+      var CleanResponse: string;
+      ParseAndExecuteFileEdits(Response, CleanResponse);
+      
+      AddMessage('assistant', CleanResponse);
       
       // Display what context was used
       if Length(Context) > 0 then
@@ -635,6 +641,78 @@ begin
     // Standalone mode - user is manually entering file path
     // Update context display to show manual entry mode
     LabelContext.Text := 'Context: Manual file entry (standalone mode)';
+  end;
+end;
+
+procedure TChatWindow.ParseAndExecuteFileEdits(const AIResponse: string; var CleanResponse: string);
+var
+  Lines: TStringList;
+  I, J: Integer;
+  Line, FileName, Action: string;
+  InCommand: Boolean;
+  CommandLines: TStringList;
+  Content: string;
+  Success: Boolean;
+  StartLine, EndLine, Col: Integer;
+begin
+  CleanResponse := AIResponse;
+  Lines := TStringList.Create;
+  CommandLines := TStringList.Create;
+  try
+    Lines.Text := AIResponse;
+    InCommand := False;
+    I := 0;
+    
+    while I < Lines.Count do
+    begin
+      Line := Trim(Lines[I]);
+      
+      // Look for file edit command markers
+      if StartsText('EDIT_FILE:', Line) then
+      begin
+        InCommand := True;
+        CommandLines.Clear;
+        FileName := Copy(Line, Length('EDIT_FILE:') + 1, MaxInt);
+        FileName := Trim(FileName);
+        Inc(I);
+        Continue;
+      end;
+      
+      if InCommand then
+      begin
+        if Line = 'END_EDIT' then
+        begin
+          // Execute the edit command
+          Content := CommandLines.Text;
+          
+          if FileName <> '' then
+          begin
+            Success := FContextProvider.ReplaceFileContent(FileName, Content);
+            if Success then
+            begin
+              // Remove the command from clean response
+              CleanResponse := StringReplace(CleanResponse, 
+                'EDIT_FILE:' + FileName, 
+                '✓ File updated: ' + ExtractFileName(FileName), 
+                [rfIgnoreCase]);
+              CleanResponse := StringReplace(CleanResponse, 'END_EDIT', '', [rfIgnoreCase]);
+            end;
+          end;
+          
+          InCommand := False;
+          CommandLines.Clear;
+        end
+        else
+        begin
+          CommandLines.Add(Lines[I]);
+        end;
+      end;
+      
+      Inc(I);
+    end;
+  finally
+    Lines.Free;
+    CommandLines.Free;
   end;
 end;
 

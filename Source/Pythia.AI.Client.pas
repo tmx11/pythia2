@@ -133,7 +133,12 @@ begin
     MsgObj := TJSONObject.Create;
     MsgObj.AddPair('role', 'system');
     MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
-      'Help users with Delphi code, explain concepts, debug issues, and provide best practices.');
+      'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
+      'When asked to edit a file directly, use this format:' + #13#10 +
+      'EDIT_FILE: filepath' + #13#10 +
+      'file content here' + #13#10 +
+      'END_EDIT' + #13#10 +
+      'This will directly edit the file in the IDE. Use the exact filepath provided in the context.');
     MsgArray.AddElement(MsgObj);
     
     // Add conversation messages
@@ -174,7 +179,12 @@ begin
     JSON.AddPair('model', ModelName);
     JSON.AddPair('max_tokens', TJSONNumber.Create(4096));
     JSON.AddPair('system', 'You are Pythia, an expert Delphi programming assistant. ' +
-      'Help users with Delphi code, explain concepts, debug issues, and provide best practices.');
+      'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
+      'When asked to edit a file directly, use this format:' + #13#10 +
+      'EDIT_FILE: filepath' + #13#10 +
+      'file content here' + #13#10 +
+      'END_EDIT' + #13#10 +
+      'This will directly edit the file in the IDE. Use the exact filepath provided in the context.');
     
     MsgArray := TJSONArray.Create;
     
@@ -296,7 +306,12 @@ begin
     MsgObj := TJSONObject.Create;
     MsgObj.AddPair('role', 'system');
     MsgObj.AddPair('content', 'You are Pythia, an expert Delphi programming assistant. ' +
-      'Help users with Delphi code, explain concepts, debug issues, and provide best practices.');
+      'Help users with Delphi code, explain concepts, debug issues, and provide best practices. ' + #13#10 +
+      'When asked to edit a file directly, use this format:' + #13#10 +
+      'EDIT_FILE: filepath' + #13#10 +
+      'file content here' + #13#10 +
+      'END_EDIT' + #13#10 +
+      'This will directly edit the file in the IDE. Use the exact filepath provided in the context.');
     MsgArray.AddElement(MsgObj);
     
     // Add conversation messages

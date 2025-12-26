@@ -35,6 +35,10 @@ type
     function GetRelatedFiles(const FileName: string): TArray<string>;
     function EstimateTokens(const Text: string): Integer;
     function IsAvailable: Boolean;
+    // File editing methods
+    function ReplaceFileContent(const FileName, NewContent: string): Boolean;
+    function InsertTextAt(const FileName: string; Line, Column: Integer; const Text: string): Boolean;
+    function ReplaceLines(const FileName: string; StartLine, EndLine: Integer; const NewText: string): Boolean;
   end;
 
   TBaseContextProvider = class(TInterfacedObject, IContextProvider)
@@ -44,6 +48,10 @@ type
     function GetProjectFiles: TArray<string>; virtual; abstract;
     function GetRelatedFiles(const FileName: string): TArray<string>; virtual;
     function IsAvailable: Boolean; virtual; abstract;
+    // File editing methods (virtual)
+    function ReplaceFileContent(const FileName, NewContent: string): Boolean; virtual; abstract;
+    function InsertTextAt(const FileName: string; Line, Column: Integer; const Text: string): Boolean; virtual; abstract;
+    function ReplaceLines(const FileName: string; StartLine, EndLine: Integer; const NewText: string): Boolean; virtual; abstract;
   public
     function EstimateTokens(const Text: string): Integer;
     function GatherContext(AIncludeProject: Boolean = False): TArray<TContextItem>;
@@ -58,6 +66,10 @@ type
     function GetSelection: TContextItem; override;
     function GetProjectFiles: TArray<string>; override;
     function IsAvailable: Boolean; override;
+    // File editing via IOTASourceEditor
+    function ReplaceFileContent(const FileName, NewContent: string): Boolean; override;
+    function InsertTextAt(const FileName: string; Line, Column: Integer; const Text: string): Boolean; override;
+    function ReplaceLines(const FileName: string; StartLine, EndLine: Integer; const NewText: string): Boolean; override;
   end;
 
   // Standalone context provider using filesystem
@@ -71,6 +83,10 @@ type
     function GetSelection: TContextItem; override;
     function GetProjectFiles: TArray<string>; override;
     function IsAvailable: Boolean; override;
+    // File editing (stubs - not supported in standalone mode)
+    function ReplaceFileContent(const FileName, NewContent: string): Boolean; override;
+    function InsertTextAt(const FileName: string; Line, Column: Integer; const Text: string): Boolean; override;
+    function ReplaceLines(const FileName: string; StartLine, EndLine: Integer; const NewText: string): Boolean; override;
   public
     constructor Create(const AProjectPath: string);
   end;
@@ -438,6 +454,171 @@ begin
   Result := Assigned(BorlandIDEServices);
 end;
 
+function TIDEContextProvider.ReplaceFileContent(const FileName, NewContent: string): Boolean;
+var
+  ModuleServices: IOTAModuleServices;
+  Module: IOTAModule;
+  Editor: IOTASourceEditor;
+  Writer: IOTAEditWriter;
+  I: Integer;
+  UTF8Content: UTF8String;
+begin
+  Result := False;
+  
+  if not Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
+    Exit;
+
+  // Find the open module for this file
+  Module := nil;
+  for I := 0 to ModuleServices.ModuleCount - 1 do
+  begin
+    if SameText(ModuleServices.Modules[I].FileName, FileName) then
+    begin
+      Module := ModuleServices.Modules[I];
+      Break;
+    end;
+  end;
+
+  if not Assigned(Module) then
+    Exit; // File not open
+
+  if Module.GetModuleFileCount = 0 then
+    Exit;
+
+  Editor := Module.GetModuleFileEditor(0) as IOTASourceEditor;
+  if not Assigned(Editor) then
+    Exit;
+
+  Writer := Editor.CreateUndoableWriter;
+  try
+    UTF8Content := UTF8String(NewContent);
+    Writer.DeleteTo(MaxInt); // Delete all content
+    Writer.Insert(PAnsiChar(UTF8Content)); // Insert new content
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+function TIDEContextProvider.InsertTextAt(const FileName: string; Line, Column: Integer; const Text: string): Boolean;
+var
+  ModuleServices: IOTAModuleServices;
+  Module: IOTAModule;
+  Editor: IOTASourceEditor;
+  Writer: IOTAEditWriter;
+  EditView: IOTAEditView;
+  CharPos: TOTACharPos;
+  I: Integer;
+  UTF8Text: UTF8String;
+begin
+  Result := False;
+  
+  if not Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
+    Exit;
+
+  // Find the open module for this file
+  Module := nil;
+  for I := 0 to ModuleServices.ModuleCount - 1 do
+  begin
+    if SameText(ModuleServices.Modules[I].FileName, FileName) then
+    begin
+      Module := ModuleServices.Modules[I];
+      Break;
+    end;
+  end;
+
+  if not Assigned(Module) then
+    Exit; // File not open
+
+  if Module.GetModuleFileCount = 0 then
+    Exit;
+
+  Editor := Module.GetModuleFileEditor(0) as IOTASourceEditor;
+  if not Assigned(Editor) then
+    Exit;
+
+  EditView := Editor.GetEditView(0);
+  if not Assigned(EditView) then
+    Exit;
+
+  // Convert line/column to character position
+  CharPos.Line := Line;
+  CharPos.CharIndex := Column;
+
+  Writer := Editor.CreateUndoableWriter;
+  try
+    Writer.CopyTo(EditView.CharPosToPos(CharPos)); // Move to position
+    UTF8Text := UTF8String(Text);
+    Writer.Insert(PAnsiChar(UTF8Text));
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+function TIDEContextProvider.ReplaceLines(const FileName: string; StartLine, EndLine: Integer; const NewText: string): Boolean;
+var
+  ModuleServices: IOTAModuleServices;
+  Module: IOTAModule;
+  Editor: IOTASourceEditor;
+  Writer: IOTAEditWriter;
+  EditView: IOTAEditView;
+  StartPos, EndPos: TOTACharPos;
+  StartCharPos, EndCharPos: Integer;
+  I: Integer;
+  UTF8Text: UTF8String;
+begin
+  Result := False;
+  
+  if not Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
+    Exit;
+
+  // Find the open module for this file
+  Module := nil;
+  for I := 0 to ModuleServices.ModuleCount - 1 do
+  begin
+    if SameText(ModuleServices.Modules[I].FileName, FileName) then
+    begin
+      Module := ModuleServices.Modules[I];
+      Break;
+    end;
+  end;
+
+  if not Assigned(Module) then
+    Exit; // File not open
+
+  if Module.GetModuleFileCount = 0 then
+    Exit;
+
+  Editor := Module.GetModuleFileEditor(0) as IOTASourceEditor;
+  if not Assigned(Editor) then
+    Exit;
+
+  EditView := Editor.GetEditView(0);
+  if not Assigned(EditView) then
+    Exit;
+
+  // Convert line ranges to character positions
+  StartPos.Line := StartLine;
+  StartPos.CharIndex := 0; // Start of line
+  EndPos.Line := EndLine + 1; // Go to next line
+  EndPos.CharIndex := 0;
+
+  StartCharPos := EditView.CharPosToPos(StartPos);
+  EndCharPos := EditView.CharPosToPos(EndPos);
+
+  Writer := Editor.CreateUndoableWriter;
+  try
+    Writer.CopyTo(StartCharPos); // Move to start position
+    Writer.DeleteTo(EndCharPos); // Delete lines
+    UTF8Text := UTF8String(NewText);
+    Writer.Insert(PAnsiChar(UTF8Text)); // Insert new text
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
 { TStandaloneContextProvider }
 
 constructor TStandaloneContextProvider.Create(const AProjectPath: string);
@@ -543,6 +724,24 @@ end;
 function TStandaloneContextProvider.IsAvailable: Boolean;
 begin
   Result := FProjectPath <> '';
+end;
+
+function TStandaloneContextProvider.ReplaceFileContent(const FileName, NewContent: string): Boolean;
+begin
+  // File editing not supported in standalone mode
+  Result := False;
+end;
+
+function TStandaloneContextProvider.InsertTextAt(const FileName: string; Line, Column: Integer; const Text: string): Boolean;
+begin
+  // File editing not supported in standalone mode
+  Result := False;
+end;
+
+function TStandaloneContextProvider.ReplaceLines(const FileName: string; StartLine, EndLine: Integer; const NewText: string): Boolean;
+begin
+  // File editing not supported in standalone mode
+  Result := False;
 end;
 
 end.

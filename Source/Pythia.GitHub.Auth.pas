@@ -22,7 +22,9 @@ type
     class var FCopilotToken: string;
     class var FUsername: string;
     class var FStatus: TGitHubAuthStatus;
+    class var FTokenExpiresAt: TDateTime;
     class function GetCopilotToken(const OAuthToken: string): string;
+    class function IsTokenExpired: Boolean;
   public
     // GitHub OAuth Device Flow - matches VS Code Copilot
     class function StartDeviceFlow(out DeviceCode: string; out UserCode: string; out VerificationUri: string): Boolean;
@@ -196,11 +198,20 @@ begin
   if FAuthToken = '' then
     LoadCachedToken;
   
-  // Exchange OAuth token for Copilot-specific token if needed
-  if (FAuthToken <> '') and (FCopilotToken = '') then
+  // Refresh Copilot token if expired or missing
+  if (FAuthToken <> '') and (IsTokenExpired or (FCopilotToken = '')) then
+  begin
     FCopilotToken := GetCopilotToken(FAuthToken);
+    if FCopilotToken <> '' then
+      FTokenExpiresAt := Now + (50 / 1440); // 50 minutes (tokens valid ~60min)
+  end;
   
   Result := FCopilotToken;
+end;
+
+class function TGitHubCopilotAuth.IsTokenExpired: Boolean;
+begin
+  Result := (FTokenExpiresAt = 0) or (Now >= FTokenExpiresAt);
 end;
 
 class function TGitHubCopilotAuth.GetCopilotToken(const OAuthToken: string): string;
@@ -288,8 +299,10 @@ var
   Ini: TIniFile;
 begin
   FAuthToken := '';
+  FCopilotToken := '';
   FUsername := '';
   FStatus := asNotAuthenticated;
+  FTokenExpiresAt := 0;
   
   Ini := TIniFile.Create(TPythiaConfig.GetConfigPath);
   try
